@@ -1,0 +1,29 @@
+- [x] Analýza zadání @[Datová a ekonomická Analýza FVE Antelon Energy zadání.docx]
+- [x] Inicializace projektu
+    - [x] Vytvoření `README.md`
+    - [x] Vytvoření `requirements.txt`
+    - [x] Nastavení `docker-compose.yml`
+- [x] Implementace `src/data_loader.py`
+- [x] Implementace `src/analyzer.py`
+- [x] Implementace `src/visualizer.py`
+- [x] Implementace `src/app.py`
+- [x] Testování a verifikace
+- [x] Implementace stránky Ekonomika - Investice
+    - [x] Rozšíření `src/analyzer.py` o investiční výpočty
+    - [x] Rozšíření `src/visualizer.py` o grafy návratnosti
+    - [x] Úprava `src/app.py` pro navigaci a novou stránku
+- [x] Úprava UI (české formátování čísel)
+- [x] Přidání scénáře FVE + Reinvestice úspor
+- [x] Rozdělení ceny elektřiny (silová + distribuce)
+- [x] Škálovatelný profil spotřeby (dle roční spotřeby)
+- [x] Zobrazení energetických toků v kWh (Nákup/Prodej)
+- [x] Detailní ekonomická bilance (CZK) pod energetickou bilancí
+- [x] Koláčový graf složení úspor (Vlastní spotřeba vs Prodej)
+- [x] Optimalizace rozložení dashboardu (Pie chart vedle metrik)
+- [x] Treemap vizualizace úspor (Kategorie + Měsíce)
+- [x] Úprava vizualizací (Treemap hierarchie, České měsíce, Layout)
+- [x] Prohození sekcí (Data před Denní bilancí)
+- [x] Energetické grafy úspor (Pie + Treemap v kWh)
+- [x] Vylepšení koláčových grafů (Legenda + Hodnota + % uvnitř)
+- [x] Formátování hodnot v grafech (CZ standard + Kč)
+- [x] Formátování tabulek (České sloupce + Kč/kWh)
