@@ -1,4 +1,4 @@
-# Antelon Energy - PV Analysis Tool
+# fveAnalyzator
 
 ## Description
 This tool provides a deep analysis of the feasibility of implementing a Photovoltaic (PV) power plant for Antelon Energy customers. It compares the investment in a PV system against the current state and other investment opportunities (e.g., S&P 500).

@@ -27,3 +27,4 @@
 - [x] Vylepšení koláčových grafů (Legenda + Hodnota + % uvnitř)
 - [x] Formátování hodnot v grafech (CZ standard + Kč)
 - [x] Formátování tabulek (České sloupce + Kč/kWh)
+- [x] Přejmenování projektu na fveAnalyzator

@@ -1,4 +1,4 @@
-# Antelon Energy - Nástroj pro Analýzu FVE
+# fveAnalyzatorpro Analýzu FVE
 
 ## Popis
 Tento nástroj poskytuje hloubkovou analýzu proveditelnosti realizace fotovoltaické elektrárny (FVE) pro zákazníky Antelon Energy. Porovnává investici do FVE se současným stavem a jinými investičními příležitostmi (např. S&P 500).

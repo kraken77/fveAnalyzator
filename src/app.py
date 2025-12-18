@@ -11,11 +11,11 @@ def format_cz_number(val):
         return "{:,.2f}".format(val).replace(",", " ").replace(".", ",")
     return val
 
-st.set_page_config(page_title="Antelon Energy - FVE Analýza", layout="wide")
+st.set_page_config(page_title="fveAnalyzator - FVE Analýza", layout="wide")
 
 
 def render_energy_dashboard():
-    st.title("🔋 Antelon Energy - Energetická Bilance")
+    st.title("🔋 fveAnalyzator - Energetická Bilance")
 
     # Sidebar for inputs
     st.sidebar.header("Parametry FVE")
@@ -149,7 +149,7 @@ def render_energy_dashboard():
     st.plotly_chart(plot_energy_balance_daily(result_df, selected_date), use_container_width=True)
 
 def render_economic_dashboard():
-    st.title("💰 Antelon Energy - Ekonomika a Investice")
+    st.title("💰 fveAnalyzator - Ekonomika a Investice")
     
     if 'annual_savings' not in st.session_state:
         st.warning("Nejprve prosím navštivte stránku 'Energetická Bilance' pro výpočet úspor.")
