@@ -7,13 +7,15 @@ Tento nástroj poskytuje hloubkovou analýzu proveditelnosti realizace fotovolta
 - **Analýza toků energie**: Analýza spotřeby, výroby, využití baterie a interakce se sítí.
 - **Ekonomická analýza**: Výpočet ROI, NPV a porovnání s jinými investicemi.
 - **Vizualizace**: Interaktivní grafy pomocí Plotly.
+- **PDF Reporting**: Generování komplexních PDF reportů s grafy, tabulkami a shrnutím analýzy.
 - **Plánování scénářů**: Optimalizace velikosti FVE a baterie.
 
 ## Technologie
 - **Jazyk**: Python 3.12+
 - **Frontend**: Streamlit
 - **Zpracování dat**: Pandas, NumPy
-- **Vizualizace**: Plotly
+- **Vizualizace**: Plotly, Kaleido
+- **Reporting**: WeasyPrint, Jinja2
 - **Kontejnerizace**: Docker
 
 ## Instalace
@@ -50,13 +52,18 @@ graph TD
     Analyzer[Modul Analýzy]
     DataLoader[Načítání Dat]
     Visualizer[Vizualizace]
+    Reporter[Modul Reportingu]
     Data[(Datové Zdroje)]
+    PDF[PDF Report]
 
     User -->|Interaguje| Streamlit
     Streamlit -->|Žádá Data| DataLoader
     Streamlit -->|Žádá Analýzu| Analyzer
     Streamlit -->|Žádá Grafy| Visualizer
+    Streamlit -->|Generuje Report| Reporter
     DataLoader -->|Čte| Data
     Analyzer -->|Využívá| DataLoader
     Visualizer -->|Využívá| Analyzer
+    Reporter -->|Využívá| Visualizer
+    Reporter -->|Generuje| PDF
 ```

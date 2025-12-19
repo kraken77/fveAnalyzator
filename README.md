@@ -7,13 +7,15 @@ This tool provides a deep analysis of the feasibility of implementing a Photovol
 - **Energy Flow Analysis**: Analyzes consumption, production, battery usage, and grid interaction.
 - **Economic Analysis**: Calculates ROI, NPV, and compares with other investments.
 - **Visualization**: Interactive charts using Plotly.
+- **PDF Reporting**: Generates comprehensive PDF reports with charts, tables, and analysis summaries.
 - **Scenario Planning**: Optimizes PV and battery size.
 
 ## Technology Stack
 - **Language**: Python 3.12+
 - **Frontend**: Streamlit
 - **Data Processing**: Pandas, NumPy
-- **Visualization**: Plotly
+- **Visualization**: Plotly, Kaleido
+- **Reporting**: WeasyPrint, Jinja2
 - **Containerization**: Docker
 
 ## Installation
@@ -50,13 +52,18 @@ graph TD
     Analyzer[Analyzer Module]
     DataLoader[Data Loader]
     Visualizer[Visualizer]
+    Reporter[Reporter Module]
     Data[(Data Sources)]
+    PDF[PDF Report]
 
     User -->|Interacts| Streamlit
     Streamlit -->|Requests Data| DataLoader
     Streamlit -->|Requests Analysis| Analyzer
     Streamlit -->|Requests Plots| Visualizer
+    Streamlit -->|Generates Report| Reporter
     DataLoader -->|Reads| Data
     Analyzer -->|Uses| DataLoader
     Visualizer -->|Uses| Analyzer
+    Reporter -->|Uses| Visualizer
+    Reporter -->|Generates| PDF
 ```

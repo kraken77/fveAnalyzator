@@ -4,6 +4,7 @@ import datetime
 from data_loader import load_consumption_data, load_production_data
 from analyzer import calculate_energy_balance, calculate_financials, calculate_investment_comparison
 from visualizer import plot_energy_balance_daily, plot_monthly_stats, plot_investment_comparison, plot_savings_treemap, plot_savings_composition, plot_energy_treemap
+from reporter import generate_pdf_report
 
 def format_cz_number(val):
     """Formats a number to Czech standard: 1 234,56"""
@@ -97,10 +98,14 @@ def render_energy_dashboard():
     st.subheader("Vizualizace Úspor")
     col_v1, col_v2 = st.columns(2)
     
+    # Capture figures for report
+    fig_savings_pie = plot_savings_composition(savings_self_consumption, revenue_export)
+    fig_savings_treemap = plot_savings_treemap(result_df, price_buy, price_sell)
+    
     with col_v1:
-        st.plotly_chart(plot_savings_composition(savings_self_consumption, revenue_export), use_container_width=True)
+        st.plotly_chart(fig_savings_pie, use_container_width=True)
     with col_v2:
-        st.plotly_chart(plot_savings_treemap(result_df, price_buy, price_sell), use_container_width=True)
+        st.plotly_chart(fig_savings_treemap, use_container_width=True)
     st.markdown("---")
     
     # Energy Visualization
@@ -115,7 +120,8 @@ def render_energy_dashboard():
 
     # Plots
     st.subheader("Měsíční Přehled")
-    st.plotly_chart(plot_monthly_stats(result_df), use_container_width=True)
+    fig_monthly_stats = plot_monthly_stats(result_df)
+    st.plotly_chart(fig_monthly_stats, use_container_width=True)
 
     st.subheader("Data")
     
@@ -147,6 +153,117 @@ def render_energy_dashboard():
     st.subheader("Detailní Denní Průběh")
     selected_date = st.date_input("Vyberte den", datetime.date(2024, 6, 15))
     st.plotly_chart(plot_energy_balance_daily(result_df, selected_date), use_container_width=True)
+    
+    # PDF Report Generation
+    st.sidebar.markdown("---")
+    st.sidebar.header("Export")
+    if st.sidebar.button("Generovat PDF Report"):
+        with st.spinner("Generuji PDF report..."):
+            
+            # --- Prepare Data ---
+            
+            # 1. Financials & Energy Balance
+            financials_data = {
+                'savings_czk': financials['savings_czk'],
+                'payback_years': 'N/A' # Will be updated with investment calculation
+            }
+            
+            energy_data = {
+                'total_consumption_kwh': total_consumption,
+                'total_production_kwh': total_production,
+                'self_consumption_kwh': self_consumption,
+                'total_import_kwh': financials['total_import_kWh'],
+                'total_export_kwh': financials['total_export_kWh']
+            }
+            
+            # 2. Investment Data (Calculate even if on Energy Page)
+            # Default values if not set in sidebar (or grab from session state if we want persistence)
+            inv_cost = 350000.0
+            inv_years = 20
+            inv_sp500 = 8.0
+            inv_inflation = 3.0
+            
+            inv_df = calculate_investment_comparison(
+                initial_investment_czk=inv_cost,
+                annual_savings_czk=financials['savings_czk'],
+                years=inv_years,
+                sp500_return_pct=inv_sp500,
+                inflation_pct=inv_inflation
+            )
+            
+            payback_years = inv_df[inv_df['PV_Cumulative_CashFlow'] >= 0]['Year'].min()
+            financials_data['payback_years'] = str(payback_years) if not pd.isna(payback_years) else f"> {inv_years}"
+            
+            investment_data = {
+                'investment_cost': inv_cost,
+                'final_pv_gain': inv_df['PV_Cumulative_CashFlow'].iloc[-1],
+                'final_sp500_net': inv_df['SP500_Net_Result'].iloc[-1]
+            }
+            
+            input_params = {
+                'kwp': f"{kwp:.1f}",
+                'battery': f"{battery_capacity:.1f}",
+                'consumption': f"{annual_consumption_mwh:.1f}",
+                'price_buy': f"{format_cz_number(price_buy)}",
+                'price_sell': f"{format_cz_number(price_sell)}",
+                'investment': f"{format_cz_number(inv_cost)}",
+                'sp500': f"{inv_sp500:.1f}",
+                'inflation': f"{inv_inflation:.1f}"
+            }
+
+            # 3. Figures
+            # Re-create figures to ensure they are fresh
+            fig_energy_pie = plot_savings_composition(self_consumption, financials['total_export_kWh'], labels=['Vlastní spotřeba', 'Export do sítě'], unit="kWh")
+            fig_energy_treemap = plot_energy_treemap(result_df)
+            fig_daily = plot_energy_balance_daily(result_df, selected_date)
+            fig_investment = plot_investment_comparison(inv_df)
+
+            figures = {
+                'savings_pie': fig_savings_pie,
+                'savings_treemap': fig_savings_treemap,
+                'energy_pie': fig_energy_pie,
+                'energy_treemap': fig_energy_treemap,
+                'monthly_stats': fig_monthly_stats,
+                'daily_chart': fig_daily,
+                'investment_chart': fig_investment
+            }
+            
+            # 4. DataFrames
+            # Prepare Energy Table (Head 20 for brevity in report)
+            df_energy_table = display_df.head(20).copy()
+            
+            # Prepare Investment Table
+            df_inv_table = inv_df.copy()
+            inv_col_mapping = {
+                'Year': 'Rok',
+                'PV_Cumulative_CashFlow': 'FVE Cashflow',
+                'PV_Reinvest_Net_Result': 'FVE + Reinvestice',
+                'SP500_Gross_Gain': 'S&P 500 Hrubý zisk',
+                'SP500_Net_Result': 'S&P 500 Čistý výsledek',
+                'SP500_Total_Value': 'S&P 500 Celková hodnota'
+            }
+            df_inv_table = df_inv_table.rename(columns=inv_col_mapping)
+            # Format
+            for col in df_inv_table.columns:
+                if col != 'Rok':
+                    df_inv_table[col] = df_inv_table[col].apply(lambda x: f"{format_cz_number(x)} Kč")
+            
+            dataframes = {
+                'energy_data': df_energy_table,
+                'investment_data': df_inv_table
+            }
+            
+            try:
+                pdf_bytes = generate_pdf_report(financials_data, energy_data, investment_data, input_params, figures, dataframes)
+                st.sidebar.download_button(
+                    label="Stáhnout PDF",
+                    data=pdf_bytes,
+                    file_name="fve_report.pdf",
+                    mime="application/pdf"
+                )
+                st.sidebar.success("Report vygenerován!")
+            except Exception as e:
+                st.sidebar.error(f"Chyba při generování: {e}")
 
 def render_economic_dashboard():
     st.title("💰 fveAnalyzator - Ekonomika a Investice")

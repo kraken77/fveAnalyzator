@@ -4,3 +4,6 @@ streamlit
 python-docx
 openpyxl
 numpy
+weasyprint
+jinja2
+kaleido

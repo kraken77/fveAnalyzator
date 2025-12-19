@@ -28,3 +28,17 @@
 - [x] Formátování hodnot v grafech (CZ standard + Kč)
 - [x] Formátování tabulek (České sloupce + Kč/kWh)
 - [x] Přejmenování projektu na fveAnalyzator
+
+## Generování PDF Reportu
+- [x] Výzkum knihoven pro PDF (WeasyPrint, ReportLab, Streamlit export)
+- [x] Implementace exportu grafů do obrázků
+- [x] Vytvoření šablony reportu (HTML/CSS nebo canvas)
+- [x] Integrace tlačítka "Stáhnout PDF" do aplikace
+- [x] Zahrnutí všech dashboardů a tabulek do reportu
+    - [x] Refactoring výpočtů pro dostupnost dat
+    - [x] Přidání zbývajících grafů (Treemaps, Energy Pie, Daily, Investment)
+    - [x] Přidání tabulek (Data, Investice)
+    - [x] Úprava šablony reportu
+- [x] Přidání tabulky vstupních parametrů na každou stránku reportu
+- [x] Přidání specifické hlavičky pro Ekonomickou analýzu (S&P 500, Inflace)
+- [x] Přesun legendy grafu investic pod graf (Streamlit + PDF)

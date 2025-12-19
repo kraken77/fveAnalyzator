@@ -55,10 +55,17 @@ def plot_investment_comparison(df):
 
     
     fig.update_layout(
-        title='Porovnání Návratnosti: FVE vs S&P 500',
-        xaxis_title='Roky',
-        yaxis_title='CZK',
-        hovermode="x unified"
+        title='Porovnání vývoje investice v čase',
+        xaxis_title='Rok',
+        yaxis_title='Hodnota (Kč)',
+        hovermode='x unified',
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.3,
+            xanchor="center",
+            x=0.5
+        )
     )
     return fig
 

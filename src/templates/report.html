@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="cs">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Analýza FVE - Report</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            margin-top: 5cm;
+
+            /* Space for header */
+            @top-center {
+                content: element(header);
+            }
+        }
+
+        @page economics {
+            @top-center {
+                content: element(header-economics);
+            }
+        }
+
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .header-running {
+            position: running(header);
+            width: 100%;
+            text-align: center;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .header-economics {
+            position: running(header-economics);
+            width: 100%;
+            text-align: center;
+            border-bottom: 2px solid #27ae60;
+            /* Different color for distinction */
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .header-title {
+            font-size: 1.5em;
+            color: #2c3e50;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .header-meta {
+            font-size: 0.8em;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+
+        .params-table {
+            width: 100%;
+            font-size: 0.7em;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+
+        .params-table td {
+            border: 1px solid #eee;
+            padding: 4px;
+            text-align: left;
+        }
+
+        .params-table th {
+            background-color: #f9f9f9;
+            font-weight: bold;
+            text-align: left;
+            padding: 4px;
+            border: 1px solid #eee;
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+            page-break-after: avoid;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .metric-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            width: 30%;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #27ae60;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: right;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            text-align: center;
+        }
+
+        td:first-child {
+            text-align: left;
+        }
+
+        .chart-container {
+            margin-top: 30px;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8em;
+            color: #95a5a6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header-running">
+        <div class="header-title">Analýza Fotovoltaické Elektrárny</div>
+        <div class="header-meta">Datum vygenerování: {{ generation_date }}</div>
+
+        <table class="params-table">
+            <tr>
+                <th>Výkon FVE</th>
+                <td>{{ params.kwp }} kWp</td>
+                <th>Baterie</th>
+                <td>{{ params.battery }} kWh</td>
+                <th>Roční Spotřeba</th>
+                <td>{{ params.consumption }} MWh</td>
+            </tr>
+            <tr>
+                <th>Cena Nákup</th>
+                <td>{{ params.price_buy }} Kč/kWh</td>
+                <th>Cena Prodej</th>
+                <td>{{ params.price_sell }} Kč/kWh</td>
+                <th>Investice</th>
+                <td>{{ params.investment }} Kč</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="header-economics">
+        <div class="header-title">Ekonomická Analýza</div>
+        <div class="header-meta">Datum vygenerování: {{ generation_date }}</div>
+
+        <table class="params-table">
+            <tr>
+                <th>Investice</th>
+                <td>{{ params.investment }} Kč</td>
+                <th>Růst S&P 500</th>
+                <td>{{ params.sp500 }} %</td>
+                <th>Inflace</th>
+                <td>{{ params.inflation }} %</td>
+            </tr>
+            <tr>
+                <th>Výkon FVE</th>
+                <td>{{ params.kwp }} kWp</td>
+                <th>Roční Úspora</th>
+                <td>{{ savings_czk }}</td>
+                <th>Návratnost</th>
+                <td>{{ payback_years }} let</td>
+            </tr>
+        </table>
+    </div>
+
+    <h1>Přehled Analýzy</h1>
+
+    <h2>Klíčové Metriky</h2>
+    <div class="metric-container">
+        <div class="metric">
+            <div class="metric-label">Roční Úspora</div>
+            <div class="metric-value">{{ savings_czk }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Návratnost</div>
+            <div class="metric-value">{{ payback_years }} let</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Celková Spotřeba</div>
+            <div class="metric-value">{{ total_consumption_kwh }}</div>
+        </div>
+    </div>
+
+    <h2>Energetická Bilance</h2>
+    <p>Přehled ročních toků energie:</p>
+    <ul>
+        <li><strong>Výroba FVE:</strong> {{ total_production_kwh }}</li>
+        <li><strong>Vlastní spotřeba:</strong> {{ self_consumption_kwh }}</li>
+        <li><strong>Nákup ze sítě:</strong> {{ total_import_kwh }}</li>
+        <li><strong>Prodej do sítě:</strong> {{ total_export_kwh }}</li>
+    </ul>
+
+    <div class="chart-container">
+        <h3>Složení Úspor (CZK)</h3>
+        <div style="display: flex; justify-content: center;">
+            <img src="data:image/png;base64,{{ chart_savings_pie }}" alt="Složení Úspor Pie" style="width: 45%;">
+            <img src="data:image/png;base64,{{ chart_savings_treemap }}" alt="Složení Úspor Treemap"
+                style="width: 45%;">
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <h3>Energetická Bilance (kWh)</h3>
+        <div style="display: flex; justify-content: center;">
+            <img src="data:image/png;base64,{{ chart_energy_pie }}" alt="Energie Pie" style="width: 45%;">
+            <img src="data:image/png;base64,{{ chart_energy_treemap }}" alt="Energie Treemap" style="width: 45%;">
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <h3>Měsíční Bilance</h3>
+        <img src="data:image/png;base64,{{ chart_monthly_stats }}" alt="Měsíční Statistiky">
+    </div>
+
+    <div class="chart-container">
+        <h3>Detailní Denní Průběh (Příklad)</h3>
+        <img src="data:image/png;base64,{{ chart_daily }}" alt="Denní Průběh">
+    </div>
+
+    <div style="page-break-before: always;"></div>
+
+    <h2>Data (Náhled)</h2>
+    {{ table_energy_data | safe }}
+
+    <div style="page-break-before: always; page: economics;"></div>
+
+    <h2>Ekonomická Analýza</h2>
+    <div class="metric-container">
+        <div class="metric">
+            <div class="metric-label">Investice</div>
+            <div class="metric-value">{{ investment_cost }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Zisk FVE (20 let)</div>
+            <div class="metric-value">{{ final_pv_gain }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Zisk S&P 500 (Netto)</div>
+            <div class="metric-value">{{ final_sp500_net }}</div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <h3>Porovnání Návratnosti</h3>
+        <img src="data:image/png;base64,{{ chart_investment }}" alt="Investiční Graf">
+    </div>
+
+    <h3>Detailní Investiční Data</h3>
+    {{ table_investment_data | safe }}
+
+    <div class="footer">
+        Vygenerováno nástrojem fveAnalyzator
+    </div>
+</body>
+
+</html>
