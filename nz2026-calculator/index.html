@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NZÚ bezúročný úvěr / NZÚ Light pro RD a BD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .mode-btn {
+            border: 2px solid #E0DFDC;
+            background: white;
+            color: #555;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-btn:hover {
+            border-color: #456FAE;
+            color: #456FAE;
+        }
+        .mode-btn.active {
+            border-color: #456FAE;
+            background: #456FAE;
+            color: white;
+        }
+        .form-input {
+            width: 100%;
+            min-width: 0;
+            border: 1px solid #E0DFDC;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 14px;
+            color: #111;
+            background: white;
+            text-align: right;
+        }
+        .form-input:focus {
+            border-color: #456FAE;
+            outline: none;
+        }
+        .form-checkbox {
+            width: 20px;
+            height: 20px;
+            accent-color: #456FAE;
+            flex-shrink: 0;
+        }
+        .result-card {
+            border: 2px solid #456FAE;
+            border-radius: 12px;
+            background: white;
+            padding: 24px;
+        }
+        .result-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #456FAE;
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #E0DFDC;
+        }
+        .info-badge {
+            display: inline-block;
+            border-radius: 9999px;
+            border: 1px solid;
+            padding: 3px 10px;
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .info-badge.blue {
+            background: #EBF1F9;
+            color: #456FAE;
+            border-color: #c2d5ef;
+        }
+        .info-badge.green {
+            background: #eaf6ef;
+            color: #2a7a4b;
+            border-color: #b2ddc4;
+        }
+        .info-badge.orange {
+            background: #fff4e8;
+            color: #b06000;
+            border-color: #f0d0a0;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 130px;
+            gap: 12px;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #EEE;
+        }
+        .form-row:last-child {
+            border-bottom: none;
+        }
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px dashed #EEE;
+            cursor: pointer;
+        }
+        .checkbox-row:last-child {
+            border-bottom: none;
+        }
+        .info-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid #E0DFDC;
+            font-size: 11px;
+            font-weight: bold;
+            color: #666;
+            cursor: help;
+            vertical-align: middle;
+            margin-left: 4px;
+        }
+        .sticky-sidebar {
+            position: sticky;
+            top: 100px;
+        }
+        @media (max-width: 900px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .sticky-sidebar {
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen pb-16">
+    <div class="max-w-layout mx-auto px-4 md:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-32 font-bold text-black-900 mb-8">NZÚ bezúročný úvěr / NZÚ Light pro RD a BD</h1>
+            <p class="text-16 text-black-700 max-w-700 mb-12">
+                Spočítejte hodnotu státní podpory, návratnost investice a srovnání variant financování.
+            </p>
+            <div class="flex flex-wrap gap-6 mb-12">
+                <span class="info-badge blue">Nová zelená úsporám</span>
+                <span class="info-badge green">Dotace</span>
+                <span class="info-badge green">Bezúročný úvěr</span>
+                <span class="info-badge orange">Financování</span>
+            </div>
+        </div>
+
+        <!-- Mode Tabs -->
+        <div class="mb-8 flex flex-wrap gap-4" id="modeTabs">
+            <button class="mode-btn active" data-mode="rd-komplexni">RD – Komplexní opatření</button>
+            <button class="mode-btn" data-mode="rd-dilci">RD – Dílčí opatření</button>
+            <button class="mode-btn" data-mode="rd-light">RD – NZÚ Light (nízkopříjmoví)</button>
+            <button class="mode-btn" data-mode="bd-komplexni">BD – Komplexní renovace</button>
+            <button class="mode-btn" data-mode="bd-dilci">BD – Dílčí renovace</button>
+        </div>
+
+        <!-- Info box for RD Komplexní -->
+        <div id="modeInfo" class="mb-6 rounded-lg border border-[#b8cfe8] bg-[#EBF1F9] p-6 text-12 leading-relaxed text-[#1e3a5f]">
+            Komplexní opatření RD. Větší rozsah renovace, zateplení povinné + využití OZE. Max. výše úvěru 2 000 000 Kč, splatnost 10 let do 500 000 Kč / 15 let nad 500 000 Kč (až 25 let pro 4. příjmový decil). 0 % RPSN. Min. úvěr 100 000 Kč.
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8 items-start">
+            <!-- Left: Form -->
+            <div class="flex flex-col gap-8">
+                <!-- Eligibility -->
+                <div class="card p-6">
+                    <div class="mb-4 overflow-hidden rounded-lg border border-[#E0DFDC] bg-[#FAFAF9]">
+                        <div class="flex items-start gap-4 p-6">
+                            <label class="flex flex-1 cursor-pointer items-start gap-4">
+                                <input id="rd_eligible" type="checkbox" class="form-checkbox mt-1" checked>
+                                <span>
+                                    <strong class="block text-14 text-black-900">Žadatel a nemovitost splňují podmínky NZÚ</strong>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-4 rounded-lg border border-[#E0DFDC] bg-[#FAFAF9] overflow-hidden">
+                        <div class="flex items-start gap-4 p-6">
+                            <label class="flex flex-1 cursor-pointer items-start gap-4">
+                                <input id="decil4" type="checkbox" class="form-checkbox mt-1">
+                                <span>
+                                    <strong class="block text-14 text-black-900">Žadatel a domácnost jsou ve 4. příjmovém decilu</strong>
+                                    <span class="mt-2 block text-12 text-[#666]">Při splnění této podmínky lze splácet úvěr až 25 let (standardně 15 let).</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Area A: Insulation -->
+                <div id="areaA" class="form-section">
+                    <h2 class="section-title">Oblast A – Zateplení <span class="info-circle">?</span></h2>
+                    <div class="mb-4 rounded-lg bg-[#F3F2EF] p-6">
+                        <label class="flex cursor-pointer items-start gap-4">
+                            <input type="checkbox" id="pamatka" class="form-checkbox mt-1">
+                            <span class="text-14">
+                                <strong class="text-black-900">Budova je památkově chráněná</strong>
+                                <span class="mt-2 block text-12 text-[#666]">Po zaškrtnutí se navýší sazby u stěn, střechy, podlah nad venkovním prostorem a výplní otvorů.</span>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="mb-8">
+                        <div class="form-row">
+                            <label class="text-14 text-[#333]">
+                                Stěny vnější (vč. lehkého obvodového pláště)
+                                <span class="info-circle">?</span>
+                                <span class="mt-1 block text-12 text-[#888]" id="rate_steny">3 500 Kč/m²</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="a_steny" class="form-input" min="0" value="" placeholder="0">
+                                <span class="shrink-0 text-13 text-[#666] min-w-[36px]">m²</span>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <label class="text-14 text-[#333]">
+                                Plocha střechy
+                                <span class="info-circle">?</span>
+                                <span class="mt-1 block text-12 text-[#888]" id="rate_strecha">3 500 Kč/m²</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="a_strecha" class="form-input" min="0" value="" placeholder="0">
+                                <span class="shrink-0 text-13 text-[#666] min-w-[36px]">m²</span>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <label class="text-14 text-[#333]">
+                                Podlahy nad venkovním prostorem
+                                <span class="info-circle">?</span>
+                                <span class="mt-1 block text-12 text-[#888]" id="rate_podlahy">3 500 Kč/m²</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="a_podlahy_venk" class="form-input" min="0" value="" placeholder="0">
+                                <span class="shrink-0 text-13 text-[#666] min-w-[36px]">m²</span>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <label class="text-14 text-[#333]">
+                                Strop pod nevytápěnou půdou, ke nevytápěným prostorům, ostatní konstrukce
+                                <span class="info-circle">?</span>
+                                <span class="mt-1 block text-12 text-[#888]" id="rate_strop">2 000 Kč/m²</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="a_strop" class="form-input" min="0" value="" placeholder="0">
+                                <span class="shrink-0 text-13 text-[#666] min-w-[36px]">m²</span>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <label class="text-14 text-[#333]">
+                                Konstrukce k zemině
+                                <span class="info-circle">?</span>
+                                <span class="mt-1 block text-12 text-[#888]" id="rate_zemina">5 000 Kč/m²</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="a_zemina" class="form-input" min="0" value="" placeholder="0">
+                                <span class="shrink-0 text-13 text-[#666] min-w-[36px]">m²</span>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <label class="text-14 text-[#333]">
+                                Výplně otvorů (okna, dveře)
+                                <span class="info-circle">?</span>
+                                <span class="mt-1 block text-12 text-[#888]" id="rate_okna">12 000 Kč/m²</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="a_okna" class="form-input" min="0" step="0.1" value="" placeholder="0">
+                                <span class="shrink-0 text-13 text-[#666] min-w-[36px]">m²</span>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <label class="text-14 text-[#333]">
+                                Stínicí technika
+                                <span class="info-circle">?</span>
+                                <span class="mt-1 block text-12 text-[#888]" id="rate_stineni">3 000 Kč/m²</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="a_stineni" class="form-input" min="0" step="0.1" value="" placeholder="0">
+                                <span class="shrink-0 text-13 text-[#666] min-w-[36px]">m²</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Area C.1: Heat source -->
+                <div id="areaC1" class="form-section">
+                    <h2 class="section-title">Oblast C.1 – Výměna zdroje tepla <span class="info-circle">?</span></h2>
+                    <div class="mb-8">
+                        <label class="checkbox-row" for="zdroj_kotel-bio">
+                            <input id="zdroj_kotel-bio" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Kotel na biomasu vč. akumulační nádrže</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_kotel-bio">max 200 000 Kč</span>
+                        </label>
+                        <label class="checkbox-row" for="zdroj_kotel-bio+">
+                            <input id="zdroj_kotel-bio+" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Kotel na biomasu se samočinnou dodávkou + zásobník</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_kotel-bio+">max 300 000 Kč</span>
+                        </label>
+                        <label class="checkbox-row" for="zdroj_kamna">
+                            <input id="zdroj_kamna" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Kamna na biomasu (lokální zdroj)</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_kamna">max 100 000 Kč</span>
+                        </label>
+                        <label class="checkbox-row" for="zdroj_akumkamna">
+                            <input id="zdroj_akumkamna" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Akumulační kamna na biomasu individuálně na místě stavěná</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_akumkamna">max 200 000 Kč</span>
+                        </label>
+                        <label class="checkbox-row" for="zdroj_tca">
+                            <input id="zdroj_tca" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Tepelné čerpadlo vzduch-vzduch</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_tca">max 200 000 Kč</span>
+                        </label>
+                        <label class="checkbox-row" for="zdroj_tcv">
+                            <input id="zdroj_tcv" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Tepelné čerpadlo vzduch-voda</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_tcv">max 350 000 Kč</span>
+                        </label>
+                        <label class="checkbox-row" for="zdroj_tck">
+                            <input id="zdroj_tck" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Tepelné čerpadlo země-voda / voda-voda</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_tck">max 400 000 Kč</span>
+                        </label>
+                        <label class="checkbox-row" for="zdroj_czt">
+                            <input id="zdroj_czt" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Napojení na CZT (soustava zásobování teplem)</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_czt">max 100 000 Kč</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Area C.2: Hot water -->
+                <div id="areaC2" class="form-section">
+                    <h2 class="section-title">Oblast C.2 – Příprava teplé vody <span class="info-circle">?</span></h2>
+                    <div class="mb-8">
+                        <label class="checkbox-row" for="c2_sol">
+                            <input id="c2_sol" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Solární termický ohřev vody (min. 1,8 m² aperturní plochy)</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_c2_sol">max 100 000 Kč</span>
+                        </label>
+                        <label class="checkbox-row" for="c2_fv">
+                            <input id="c2_fv" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Solární FV ohřev vody (min. 1,8 kWp)</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_c2_fv">max 100 000 Kč</span>
+                        </label>
+                        <label class="checkbox-row" for="c2_tcv">
+                            <input id="c2_tcv" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Tepelné čerpadlo pro ohřev vody</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_c2_tcv">max 100 000 Kč</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Area C.3: PV -->
+                <div id="areaC3" class="form-section">
+                    <h2 class="section-title">Oblast C.3 – Fotovoltaický systém <span class="info-circle">?</span></h2>
+                    <div class="mb-8">
+                        <div class="form-row">
+                            <label class="text-14 text-[#333]">
+                                Instalovaný výkon FVE (min. 3 kWp)
+                                <span class="mt-1 block text-12 text-[#888]" id="hint_c3_kwp">25 000 Kč/kWp · povinná akumulace min. 1:1</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="c3_kwp" class="form-input" min="0" step="0.1" value="" placeholder="0">
+                                <span class="shrink-0 text-13 text-[#666] min-w-[36px]">kWp</span>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <label class="text-14 text-[#333]">
+                                Kapacita bateriové akumulace
+                                <span class="info-circle">?</span>
+                                <span class="mt-1 block text-12 text-[#888]" id="hint_c3_kwh">15 000 Kč/kWh</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="c3_kwh" class="form-input" min="0" step="0.1" value="" placeholder="0">
+                                <span class="shrink-0 text-13 text-[#666] min-w-[36px]">kWh</span>
+                            </div>
+                        </div>
+                        <p class="text-12 text-[#666] mt-4" id="max_c3">Max. úvěr na opatření C.3: <strong>400 000 Kč</strong></p>
+                    </div>
+                </div>
+
+                <!-- Area C.4/C.5: Ventilation -->
+                <div id="areaC45" class="form-section">
+                    <h2 class="section-title">Oblast C.4 / C.5 – Větrání a teplo z odpadní vody</h2>
+                    <div class="mb-8">
+                        <label class="checkbox-row" for="c4">
+                            <input id="c4" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Systém řízeného větrání se zpětným získáváním tepla (rekuperace)</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_c4">max 200 000 Kč</span>
+                        </label>
+                        <label class="checkbox-row" for="c5">
+                            <input id="c5" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Centrální systém pro využití tepla z odpadní vody</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_c5">max 100 000 Kč</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Area D: Green roof & water -->
+                <div id="areaD" class="form-section">
+                    <h2 class="section-title">Oblast D – Zelená střecha a hospodaření s vodou <span class="info-circle">?</span></h2>
+                    <div class="mb-8">
+                        <div class="form-row">
+                            <label class="text-14 text-[#333]">
+                                Zelená střecha (D.1)
+                                <span class="info-circle">?</span>
+                                <span class="mt-1 block text-12 text-[#888]" id="hint_d1">2 000 Kč/m² · max 150 000 Kč · pouze v kombinaci s A nebo C</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="d1_m2" class="form-input" min="0" value="" placeholder="0">
+                                <span class="shrink-0 text-13 text-[#666] min-w-[36px]">m²</span>
+                            </div>
+                        </div>
+                        <label class="checkbox-row" for="d2_destovka">
+                            <input id="d2_destovka" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Dešťovka – akumulace dešťové vody jako užitkové</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_d2_destovka">max 100 000 Kč</span>
+                        </label>
+                        <label class="checkbox-row" for="d2_seda">
+                            <input id="d2_seda" type="checkbox" class="form-checkbox">
+                            <span class="flex-1 text-14">Šedá voda – dočištěná odpadní voda jako užitková</span>
+                            <span class="shrink-0 text-12 text-[#888] whitespace-nowrap" id="max_d2_seda">max 150 000 Kč</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Results (Sticky Sidebar) -->
+            <div class="sticky-sidebar flex flex-col gap-8">
+                <!-- Partner card -->
+                <div class="rounded-xl border border-[#E0DFDC] bg-white p-6 text-center">
+                    <div class="mb-4 text-11 font-medium uppercase tracking-wide text-[#888]">
+                        Generální partner <a class="font-semibold text-[#456FAE] hover:underline" href="#">SSP Sales s.r.o.</a>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="result-card">
+                    <h2 class="text-18 font-bold text-[#456FAE] pb-10 mb-16 border-b border-[#E0DFDC]">Výsledek</h2>
+
+                    <!-- Max loan -->
+                    <div class="mb-16 rounded-lg bg-gradient-to-br from-[#456FAE] to-[#2d4a7a] p-6 text-center text-white">
+                        <div class="text-11 uppercase tracking-wide opacity-90 mb-4">Maximální výše zvýhodněného úvěru</div>
+                        <div class="result-value" id="result_loan">0 Kč</div>
+                        <div class="mt-4 text-13 opacity-90" id="result_loan_terms">0 % RPSN · splatnost 10 let</div>
+                    </div>
+
+                    <!-- Breakdown -->
+                    <div class="mb-16 flex flex-col gap-6" id="breakdown"></div>
+
+                    <!-- Instructions -->
+                    <p class="py-12 text-center text-13 text-[#888]" id="result_hint">Zadejte plochy a vyberte opatření…</p>
+
+                    <!-- Required documents -->
+                    <div class="mb-16 rounded-lg border border-[#E0DFDC] p-6">
+                        <div class="text-14 font-bold mb-6">Povinné podklady k žádosti NZÚ</div>
+                        <p class="text-12 text-[#666] mb-10">
+                            Podkladem pro hodnocení žádosti je <strong>PENB</strong> (průkaz energetické náročnosti budovy) a projekt.
+                        </p>
+                    </div>
+
+                    <!-- Reset button -->
+                    <button type="button" id="resetBtn" class="mb-12 w-full rounded-lg border-2 border-[#E0DFDC] bg-white py-12 text-14 font-medium text-[#666] hover:border-[#456FAE] hover:text-[#456FAE]">
+                        Vynulovat všechny vstupy
+                    </button>
+
+                    <p class="text-11 text-[#888] text-center">Kalkulačka je informativní. Konečnou výši stanovuje SFŽP ČR dle Závazných pokynů NZÚ 2026+.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ===== NZÚ 2026 Calculation Engine =====
+    // Based on reverse-engineered logic from refsite.info
+
+    const CONFIG = {
+        // Maximum loan amounts per mode
+        maxLoans: {
+            'rd-komplexni': 2000000,
+            'rd-dilci': 750000,
+            'rd-light-zatepleni': 250000,
+            'rd-light-zdroj': 150000,
+            'bd-dilci-per-byt': 250000,
+            'bd-komplexni-per-byt': 750000
+        },
+
+        // Insulation rates per m²
+        insulation: {
+            rd:        { obvodove: 3500, ostatni: 2000, zemina: 5000, okna: 12000, stineni: 3000 },
+            rd_pamatka:{ obvodove: 5000, ostatni: 2000, zemina: 5000, okna: 18000, stineni: 3000 },
+            bd:        { obvodove: 5000, ostatni: 2000, zemina: 5000, okna: 12000, stineni: 3000, balkony: 5000 },
+            bd_pamatka:{ obvodove: 6500, ostatni: 2000, zemina: 5000, okna: 18000, stineni: 3000, balkony: 5000 },
+            light:     { obvodove: 2000, ostatni: 750,  zemina: 2000, okna: 8000 }
+        },
+
+        // Heat source maximums per mode
+        sources_rd: {
+            'kotel-bio':     { max: 200000 },
+            'kotel-bio+':    { max: 300000 },
+            kamna:           { max: 100000 },
+            akumkamna:       { max: 200000 },
+            tca:             { max: 200000 },
+            tcv:             { max: 350000 },
+            tck:             { max: 400000 },
+            czt:             { max: 100000 }
+        },
+        sources_bd: {
+            'kotel-bio':     { max: 100000 },
+            kamna:           { max: 50000 },
+            tca:             { max: 100000 },
+            tcv:             { max: 150000 },
+            tck:             { max: 150000 },
+            czt:             { max: 30000 },
+            kogenerace:      { max: 100000 }
+        },
+        sources_light: {
+            sol:             { max: 70000 },
+            fv:              { max: 120000 },
+            'tcv-voda':      { max: 70000 },
+            'kotel-bio':     { max: 120000 },
+            kamna:           { max: 80000 },
+            tca:             { max: 100000 },
+            tcv:             { max: 150000 },
+            tck:             { max: 150000 },
+            czt:             { max: 50000 }
+        },
+
+        // Hot water preparation
+        hotWater: { rd: 100000, bd: 50000 },
+
+        // PV system
+        pv: {
+            rd:    { perKwp: 25000, perKwh: 15000, max: 400000 },
+            bd:    { base: 35000, baseKwp: 5, extraKwp: 40000, perKwh: 15000, kwhRatio: 2 }
+        },
+
+        // Ventilation
+        ventilation: { rd: 200000, bd: 100000 },
+        wastewater:  { rd: 100000, bd: 50000 },
+
+        // Green roof
+        greenRoof: { rd: { perM2: 2000, max: 150000 }, bd: { perM2: 2000, max: 500000 } },
+
+        // Water management
+        water: {
+            rd:    { destovka: 100000, sedavoda: 150000 },
+            bd:    { sedavoda_base: 120000, sedavoda_perByt: 10000 }
+        },
+
+        // Low-income bonus
+        lowIncomeBonus: { perM2: 2000, maxArea: 60 },
+
+        // Heat source names
+        sourceNames: {
+            'kotel-bio':     'Kotel na biomasu vč. akumulační nádrže',
+            'kotel-bio+':    'Kotel na biomasu se samočinnou dodávkou',
+            kamna:           'Kamna na biomasu (lokální zdroj)',
+            akumkamna:       'Akumulační kamna na biomasu',
+            tca:             'Tepelné čerpadlo vzduch-vzduch',
+            tcv:             'Tepelné čerpadlo vzduch-voda',
+            tck:             'Tepelné čerpadlo země-voda / voda-voda',
+            czt:             'Napojení na CZT',
+            kogenerace:      'Kogenerace',
+            sol:             'Solární termický ohřev vody',
+            fv:              'Solární FV ohřev vody',
+            'tcv-voda':      'Tepelné čerpadlo pro ohřev vody'
+        },
+
+        // Mode descriptions
+        modeDescriptions: {
+            'rd-komplexni': 'Komplexní opatření RD. Větší rozsah renovace, zateplení povinné + využití OZE. Max. výše úvěru 2 000 000 Kč, splatnost 10 let do 500 000 Kč / 15 let nad 500 000 Kč (až 25 let pro 4. příjmový decil). 0 % RPSN. Min. úvěr 100 000 Kč.',
+            'rd-dilci': 'Dílčí opatření RD. Možnost čerpat podporu na jednotlivá opatření bez nutnosti komplexní renovace. Max. výše úvěru 750 000 Kč, splatnost 10 let (až 25 let pro 4. příjmový decil). 0 % RPSN. Min. úvěr 100 000 Kč.',
+            'rd-light': 'NZÚ Light pro nízko příjmové žadatele. Zjednodušený režim se sníženými sazbami. Max. úvěr 250 000 Kč na zateplení + 150 000 Kč na zdroj tepla.',
+            'bd-komplexni': 'Komplexní renovace bytového domu. Max. úvěr 750 000 Kč/byt, splatnost 10 let (až 25 let pro 4. příjmový decil). 0 % RPSN.',
+            'bd-dilci': 'Dílčí renovace bytového domu. Max. úvěr 250 000 Kč/byt, splatnost 10 let (až 25 let pro 4. příjmový decil). 0 % RPSN.'
+        }
+    };
+
+    // ===== State =====
+    let state = {
+        mode: 'rd-komplexni',
+        eligible: true,
+        decil4: false,
+        pamatka: false,
+        // Area A
+        a_steny: 0,
+        a_strecha: 0,
+        a_podlahy_venk: 0,
+        a_strop: 0,
+        a_zemina: 0,
+        a_okna: 0,
+        a_stineni: 0,
+        // C.1 sources
+        zdroj_kotel_bio: false,
+        zdroj_kotel_bio_plus: false,
+        zdroj_kamna: false,
+        zdroj_akumkamna: false,
+        zdroj_tca: false,
+        zdroj_tcv: false,
+        zdroj_tck: false,
+        zdroj_czt: false,
+        // C.2 hot water
+        c2_sol: false,
+        c2_fv: false,
+        c2_tcv: false,
+        // C.3 PV
+        c3_kwp: 0,
+        c3_kwh: 0,
+        // C.4/C.5
+        c4: false,
+        c5: false,
+        // D
+        d1_m2: 0,
+        d2_destovka: false,
+        d2_seda: false
+    };
+
+    // ===== Helpers =====
+    function fmt(n) {
+        return new Intl.NumberFormat('cs-CZ').format(Math.round(n)) + ' Kč';
+    }
+
+    function fmtNum(n) {
+        return new Intl.NumberFormat('cs-CZ').format(Math.round(n));
+    }
+
+    function getInsulationRates() {
+        const pamatka = state.pamatka;
+        const m = state.mode;
+        if (m === 'rd-komplexni' || m === 'rd-dilci') {
+            return pamatka ? CONFIG.insulation.rd_pamatka : CONFIG.insulation.rd;
+        } else if (m === 'bd-komplexni' || m === 'bd-dilci') {
+            return pamatka ? CONFIG.insulation.bd_pamatka : CONFIG.insulation.bd;
+        } else if (m === 'rd-light') {
+            return CONFIG.insulation.light;
+        }
+        return CONFIG.insulation.rd;
+    }
+
+    function getSources() {
+        const m = state.mode;
+        if (m === 'rd-komplexni' || m === 'rd-dilci') return CONFIG.sources_rd;
+        if (m === 'bd-komplexni' || m === 'bd-dilci') return CONFIG.sources_bd;
+        if (m === 'rd-light') return CONFIG.sources_light;
+        return CONFIG.sources_rd;
+    }
+
+    function isRD() {
+        return state.mode.startsWith('rd-');
+    }
+
+    function isBD() {
+        return state.mode.startsWith('bd-');
+    }
+
+    function isLight() {
+        return state.mode === 'rd-light';
+    }
+
+    // ===== Calculation =====
+    function calculate() {
+        const rates = getInsulationRates();
+        const sources = getSources();
+        const breakdown = [];
+        const warnings = [];
+        let total = 0;
+
+        // Area A: Insulation
+        const a_total =
+            (state.a_steny || 0) * rates.obvodove +
+            (state.a_strecha || 0) * rates.obvodove +
+            (state.a_podlahy_venk || 0) * rates.obvodove +
+            (state.a_strop || 0) * rates.ostatni +
+            (state.a_zemina || 0) * rates.zemina +
+            (state.a_okna || 0) * rates.okna +
+            (state.a_stineni || 0) * (rates.stiteni || rates.stineni || 0);
+
+        if (a_total > 0) {
+            breakdown.push({ label: 'Oblast A – Zateplení', value: a_total });
+            total += a_total;
+        }
+
+        // Area C.1: Heat source - take the MAX selected
+        const sourceKeys = Object.keys(sources);
+        let maxSource = 0;
+        let maxSourceName = '';
+        const sourceMap = {
+            'zdroj_kotel_bio': 'kotel-bio',
+            'zdroj_kotel_bio_plus': 'kotel-bio+',
+            'zdroj_kamna': 'kamna',
+            'zdroj_akumkamna': 'akumkamna',
+            'zdroj_tca': 'tca',
+            'zdroj_tcv': 'tcv',
+            'zdroj_tck': 'tck',
+            'zdroj_czt': 'czt'
+        };
+
+        for (const [stateKey, sourceKey] of Object.entries(sourceMap)) {
+            if (state[stateKey] && sources[sourceKey]) {
+                const val = sources[sourceKey].max;
+                if (val > maxSource) {
+                    maxSource = val;
+                    maxSourceName = CONFIG.sourceNames[sourceKey] || sourceKey;
+                }
+            }
+        }
+
+        if (maxSource > 0) {
+            breakdown.push({ label: 'Oblast C.1 – Zdroj tepla', value: maxSource, sub: maxSourceName });
+            total += maxSource;
+        }
+
+        // Area C.2: Hot water - take the MAX selected
+        let hwMax = 0;
+        let hwName = '';
+        const hwMap = { 'c2_sol': 'Solární termický ohřev vody', 'c2_fv': 'Solární FV ohřev vody', 'c2_tcv': 'Tepelné čerpadlo pro ohřev vody' };
+        const hwRate = isRD() || isLight() ? CONFIG.hotWater.rd : CONFIG.hotWater.bd;
+
+        if (state.c2_sol || state.c2_fv || state.c2_tcv) {
+            hwMax = hwRate;
+            // Pick first selected
+            if (state.c2_sol) hwName = hwMap.c2_sol;
+            else if (state.c2_fv) hwName = hwMap.c2_fv;
+            else hwName = hwMap.c2_tcv;
+            breakdown.push({ label: 'Oblast C.2 – Příprava teplé vody', value: hwMax, sub: hwName });
+            total += hwMax;
+        }
+
+        // Area C.3: PV
+        const pvConfig = isRD() || isLight() ? CONFIG.pv.rd : CONFIG.pv.bd;
+        const kwp = parseFloat(state.c3_kwp) || 0;
+        const kwh = parseFloat(state.c3_kwh) || 0;
+
+        if (kwp > 0) {
+            let pvVal;
+            if (isBD()) {
+                // BD: base rate for first N kWp, then extra
+                if (kwp <= pvConfig.baseKwp) {
+                    pvVal = kwp * pvConfig.base;
+                } else {
+                    pvVal = pvConfig.baseKwp * pvConfig.base + (kwp - pvConfig.baseKwp) * pvConfig.extraKwp;
+                }
+            } else {
+                pvVal = kwp * pvConfig.perKwp;
+            }
+
+            if (pvVal > 0) {
+                breakdown.push({ label: 'Oblast C.3 – FVE panely', value: pvVal, sub: kwp + ' kWp' });
+                total += pvVal;
+            }
+        }
+
+        if (kwh > 0) {
+            let batVal = kwh * pvConfig.perKwh;
+            if (isBD() && kwh < kwp * pvConfig.kwhRatio) {
+                // BD requires min 1:1 ratio
+            }
+            if (batVal > 0) {
+                breakdown.push({ label: 'Oblast C.3 – Bateriová akumulace', value: batVal, sub: kwh + ' kWh' });
+                total += batVal;
+            }
+        }
+
+        // C.3 cap
+        if (isRD() || isLight()) {
+            const pvTotal = (kwp > 0 ? (kwp * pvConfig.perKwp) : 0) + (kwh > 0 ? (kwh * pvConfig.perKwh) : 0);
+            if (pvTotal > pvConfig.max) {
+                const cap = pvTotal - pvConfig.max;
+                // Cap the PV contribution
+                const pvContrib = (breakdown.find(b => b.label.includes('C.3')) || {}).value || 0;
+                if (pvContrib > pvConfig.max) {
+                    // Already handled by capping below
+                }
+            }
+        }
+
+        // C.4: Ventilation
+        const ventRate = isRD() || isLight() ? CONFIG.ventilation.rd : CONFIG.ventilation.bd;
+        if (state.c4) {
+            breakdown.push({ label: 'Oblast C.4 – Větrání s rekuperací', value: ventRate });
+            total += ventRate;
+        }
+
+        // C.5: Wastewater heat
+        const wwRate = isRD() || isLight() ? CONFIG.wastewater.rd : CONFIG.wastewater.bd;
+        if (state.c5) {
+            breakdown.push({ label: 'Oblast C.5 – Teplo z odpadní vody', value: wwRate });
+            total += wwRate;
+        }
+
+        // D.1: Green roof (only with A or C)
+        const hasAorC = a_total > 0 || maxSource > 0 || hwMax > 0 || kwp > 0 || state.c4 || state.c5;
+        const greenRate = isRD() || isLight() ? CONFIG.greenRoof.rd : CONFIG.greenRoof.bd;
+        const greenVal = Math.min((state.d1_m2 || 0) * greenRate.perM2, greenRate.max);
+        if (greenVal > 0 && hasAorC) {
+            breakdown.push({ label: 'Oblast D.1 – Zelená střecha', value: greenVal, sub: (state.d1_m2 || 0) + ' m²' });
+            total += greenVal;
+        }
+
+        // D.2: Water management
+        if (isRD() || isLight()) {
+            if (state.d2_destovka) {
+                breakdown.push({ label: 'Oblast D.2 – Dešťovka', value: CONFIG.water.rd.destovka });
+                total += CONFIG.water.rd.destovka;
+            }
+            if (state.d2_seda) {
+                breakdown.push({ label: 'Oblast D.2 – Šedá voda', value: CONFIG.water.rd.sedavoda });
+                total += CONFIG.water.rd.sedavoda;
+            }
+        } else if (isBD()) {
+            if (state.d2_seda) {
+                const byty = 1; // Default - in real app this would be dynamic
+                const sedVal = CONFIG.water.bd.sedavoda_base + (byty * CONFIG.water.bd.sedavoda_perByt);
+                breakdown.push({ label: 'Oblast D.2 – Šedá voda', value: sedVal });
+                total += sedVal;
+            }
+        }
+
+        // Low-income bonus (RD light only)
+        if (isLight()) {
+            // Bonus for low-income: 2000 Kč/m² for eligible areas (max 60 m²)
+            const bonusArea = Math.min(
+                (state.a_steny || 0) + (state.a_strecha || 0) + (state.a_podlahy_venk || 0),
+                CONFIG.lowIncomeBonus.maxArea
+            );
+            const bonus = bonusArea * CONFIG.lowIncomeBonus.perM2;
+            if (bonus > 0) {
+                breakdown.push({ label: 'Bonus nízko příjmových domácností', value: bonus, sub: fmtNum(bonusArea) + ' m² × ' + fmt(CONFIG.lowIncomeBonus.perM2) });
+                total += bonus;
+            }
+        }
+
+        // Cap total by mode maximum
+        let maxLoan = 0;
+        if (isBD()) {
+            maxLoan = state.mode === 'bd-komplexni' ? CONFIG.maxLoans['bd-komplexni-per-byt']
+                                                     : CONFIG.maxLoans['bd-dilci-per-byt'];
+        } else if (isLight()) {
+            // RD Light: sum of zatepleni + zdroj caps
+            maxLoan = CONFIG.maxLoans['rd-light-zatepleni'] + CONFIG.maxLoans['rd-light-zdroj'];
+        } else {
+            maxLoan = CONFIG.maxLoans[state.mode] || 0;
+        }
+
+        if (maxLoan > 0 && total > maxLoan) {
+            total = maxLoan;
+        }
+
+        // Calculate loan terms
+        let loanTerm = 10;
+        if (total > 1500000) loanTerm = 15;
+        if (state.decil4) loanTerm = 25;
+
+        // Minimum loan check
+        if (total < 100000) {
+            total = 0;
+        }
+
+        return { total, breakdown, loanTerm, maxLoan };
+    }
+
+    // ===== UI Update =====
+    function updateUI() {
+        const result = calculate();
+        const rates = getInsulationRates();
+
+        // Update rate labels
+        document.getElementById('rate_steny').textContent = fmt(rates.obvodove) + '/m²';
+        document.getElementById('rate_strecha').textContent = fmt(rates.obvodove) + '/m²';
+        document.getElementById('rate_podlahy').textContent = fmt(rates.obvodove) + '/m²';
+        document.getElementById('rate_strop').textContent = fmt(rates.ostatni) + '/m²';
+        document.getElementById('rate_zemina').textContent = fmt(rates.zemina) + '/m²';
+        document.getElementById('rate_okna').textContent = fmt(rates.okna) + '/m²';
+        document.getElementById('rate_stineni').textContent = fmt(rates.stiteni || rates.stineni || 0) + '/m²';
+
+        // Update max labels for sources
+        const sources = getSources();
+        const sourceMaxMap = {
+            'max_kotel-bio': 'kotel-bio', 'max_kotel-bio+': 'kotel-bio+',
+            'max_kamna': 'kamna', 'max_akumkamna': 'akumkamna',
+            'max_tca': 'tca', 'max_tcv': 'tcv',
+            'max_tck': 'tck', 'max_czt': 'czt'
+        };
+        for (const [elId, srcKey] of Object.entries(sourceMaxMap)) {
+            const el = document.getElementById(elId);
+            if (el && sources[srcKey]) {
+                el.textContent = 'max ' + fmtNum(sources[srcKey].max) + ' Kč';
+            }
+        }
+
+        // Update C.2 max labels
+        const hwRate = isRD() || isLight() ? CONFIG.hotWater.rd : CONFIG.hotWater.bd;
+        document.getElementById('max_c2_sol').textContent = 'max ' + fmtNum(hwRate) + ' Kč';
+        document.getElementById('max_c2_fv').textContent = 'max ' + fmtNum(hwRate) + ' Kč';
+        document.getElementById('max_c2_tcv').textContent = 'max ' + fmtNum(hwRate) + ' Kč';
+
+        // Update C.3 hints
+        const pvConfig = isRD() || isLight() ? CONFIG.pv.rd : CONFIG.pv.bd;
+        if (isRD() || isLight()) {
+            document.getElementById('hint_c3_kwp').textContent = fmtNum(pvConfig.perKwp) + ' Kč/kWp · povinná akumulace min. 1:1';
+            document.getElementById('hint_c3_kwh').textContent = fmtNum(pvConfig.perKwh) + ' Kč/kWh';
+            document.getElementById('max_c3').innerHTML = 'Max. úvěr na opatření C.3: <strong>' + fmtNum(pvConfig.max) + ' Kč</strong>';
+        } else {
+            document.getElementById('hint_c3_kwp').textContent = 'Základ ' + fmtNum(pvConfig.base) + ' za prvních ' + pvConfig.baseKwp + ' kWp · ' + fmtNum(pvConfig.extraKwp) + ' za každý další kWp';
+            document.getElementById('hint_c3_kwh').textContent = fmtNum(pvConfig.perKwh) + ' Kč/kWh · min. poměr 1:' + pvConfig.kwhRatio;
+            document.getElementById('max_c3').innerHTML = '';
+        }
+
+        // Update C.4/C.5 max labels
+        const ventRate = isRD() || isLight() ? CONFIG.ventilation.rd : CONFIG.ventilation.bd;
+        const wwRate = isRD() || isLight() ? CONFIG.wastewater.rd : CONFIG.wastewater.bd;
+        document.getElementById('max_c4').textContent = 'max ' + fmtNum(ventRate) + ' Kč';
+        document.getElementById('max_c5').textContent = 'max ' + fmtNum(wwRate) + ' Kč';
+
+        // Update D hints
+        const greenRate = isRD() || isLight() ? CONFIG.greenRoof.rd : CONFIG.greenRoof.bd;
+        document.getElementById('hint_d1').textContent = fmtNum(greenRate.perM2) + ' Kč/m² · max ' + fmtNum(greenRate.max) + ' Kč · pouze v kombinaci s A nebo C';
+        document.getElementById('max_d2_destovka').textContent = isRD() || isLight() ? 'max ' + fmtNum(CONFIG.water.rd.destovka) + ' Kč' : '';
+        document.getElementById('max_d2_seda').textContent = 'max ' + fmtNum(isRD() || isLight() ? CONFIG.water.rd.sedavoda : CONFIG.water.bd.sedavoda_base) + ' Kč';
+
+        // Update mode info
+        document.getElementById('modeInfo').textContent = CONFIG.modeDescriptions[state.mode] || '';
+
+        // Update results
+        if (result.total > 0) {
+            document.getElementById('result_loan').textContent = fmt(result.total);
+            document.getElementById('result_loan_terms').textContent = '0 % RPSN · splatnost ' + result.loanTerm + ' let';
+
+            // Breakdown
+            const bdEl = document.getElementById('breakdown');
+            bdEl.innerHTML = '';
+            for (const item of result.breakdown) {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center py-4 border-b border-dashed border-[#EEE]';
+                let html = '<div><div class="text-14 font-medium text-black-900">' + item.label + '</div>';
+                if (item.sub) html += '<div class="text-12 text-[#888]">' + item.sub + '</div>';
+                html += '</div><div class="text-14 font-bold text-[#456FAE]">' + fmt(item.value) + '</div>';
+                div.innerHTML = html;
+                bdEl.appendChild(div);
+            }
+
+            document.getElementById('result_hint').style.display = 'none';
+        } else {
+            document.getElementById('result_loan').textContent = '0 Kč';
+            document.getElementById('result_loan_terms').textContent = '0 % RPSN · splatnost 10 let';
+            document.getElementById('breakdown').innerHTML = '';
+            document.getElementById('result_hint').style.display = 'block';
+            document.getElementById('result_hint').textContent = 'Zadejte plochy a vyberte opatření…';
+        }
+
+        // Show/hide sections based on mode
+        document.getElementById('areaA').style.display = (state.mode === 'rd-light') ? 'none' : '';
+        // Hide insulation for light mode since it has different rates
+        if (state.mode === 'rd-light') {
+            document.getElementById('areaA').style.display = 'block';
+            // Show simplified insulation rates for light mode
+        }
+    }
+
+    // ===== Event Handlers =====
+    function bindEvents() {
+        // Mode tabs
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.mode = btn.dataset.mode;
+                updateUI();
+            });
+        });
+
+        // Checkboxes
+        document.getElementById('rd_eligible').addEventListener('change', e => { state.eligible = e.target.checked; updateUI(); });
+        document.getElementById('decil4').addEventListener('change', e => { state.decil4 = e.target.checked; updateUI(); });
+        document.getElementById('pamatka').addEventListener('change', e => { state.pamatka = e.target.checked; updateUI(); });
+
+        // Source checkboxes
+        const sourceIds = ['zdroj_kotel_bio', 'zdroj_kotel_bio_plus', 'zdroj_kamna', 'zdroj_akumkamna', 'zdroj_tca', 'zdroj_tcv', 'zdroj_tck', 'zdroj_czt'];
+        sourceIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', e => {
+                    state[id] = e.target.checked;
+                    updateUI();
+                });
+            }
+        });
+
+        // C.2 checkboxes
+        ['c2_sol', 'c2_fv', 'c2_tcv'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', e => { state[id] = e.target.checked; updateUI(); });
+            }
+        });
+
+        // C.4/C.5
+        ['c4', 'c5'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', e => { state[id] = e.target.checked; updateUI(); });
+            }
+        });
+
+        // D checkboxes
+        ['d2_destovka', 'd2_seda'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', e => { state[id] = e.target.checked; updateUI(); });
+            }
+        });
+
+        // Number inputs
+        const numIds = ['a_steny', 'a_strecha', 'a_podlahy_venk', 'a_strop', 'a_zemina', 'a_okna', 'a_stineni', 'c3_kwp', 'c3_kwh', 'd1_m2'];
+        numIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', e => {
+                    const val = parseFloat(e.target.value) || 0;
+                    state[id] = val;
+                    updateUI();
+                });
+            }
+        });
+
+        // Reset button
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            state = {
+                mode: state.mode, eligible: true, decil4: false, pamatka: false,
+                a_steny: 0, a_strecha: 0, a_podlahy_venk: 0, a_strop: 0, a_zemina: 0, a_okna: 0, a_stineni: 0,
+                zdroj_kotel_bio: false, zdroj_kotel_bio_plus: false, zdroj_kamna: false, zdroj_akumkamna: false,
+                zdroj_tca: false, zdroj_tcv: false, zdroj_tck: false, zdroj_czt: false,
+                c2_sol: false, c2_fv: false, c2_tcv: false,
+                c3_kwp: 0, c3_kwh: 0,
+                c4: false, c5: false,
+                d1_m2: 0, d2_destovka: false, d2_seda: false
+            };
+            // Reset all inputs
+            document.querySelectorAll('input[type="number"]').forEach(el => el.value = '');
+            document.querySelectorAll('input[type="checkbox"]').forEach(el => {
+                if (el.id === 'rd_eligible') el.checked = true;
+                else el.checked = false;
+            });
+            updateUI();
+        });
+    }
+
+    // ===== Init =====
+    document.addEventListener('DOMContentLoaded', () => {
+        bindEvents();
+        updateUI();
+    });
+    </script>
+</body>
+</html>

@@ -1,7 +1,10 @@
 # fveAnalyzator
 
 ## Description
-This tool provides a deep analysis of the feasibility of implementing a Photovoltaic (PV) power plant for Antelon Energy customers. It compares the investment in a PV system against the current state and other investment opportunities (e.g., S&P 500).
+This project provides a comprehensive toolkit for analyzing Photovoltaic (PV) power plant feasibility and green subsidy calculations. It includes:
+
+1. **FVE Analyzer** — deep analysis of PV system feasibility for Antelon Energy customers (ROI, NPV, energy flow, economic comparison with other investments).
+2. **NZÚ 2026 Calculator** — standalone subsidy calculator for the Czech "Nová zelená úsporám" green program (see [nz2026-calculator/](nz2026-calculator/README.md)).
 
 ## Features
 - **Energy Flow Analysis**: Analyzes consumption, production, battery usage, and grid interaction.
@@ -9,6 +12,7 @@ This tool provides a deep analysis of the feasibility of implementing a Photovol
 - **Visualization**: Interactive charts using Plotly.
 - **PDF Reporting**: Generates comprehensive PDF reports with charts, tables, and analysis summaries.
 - **Scenario Planning**: Optimizes PV and battery size.
+- **Green Subsidy Calculator**: Standalone NZÚ 2026 calculator for Czech green program subsidies (see [nz2026-calculator/](nz2026-calculator/README.md)).
 
 ## Technology Stack
 - **Language**: Python 3.12+
