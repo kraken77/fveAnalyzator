@@ -127,8 +127,33 @@ def init_db(db_path=None):
                 u = User(email=email, password_hash=hash_password(passwd), role=role)
                 db.add(u)
         db.commit()
+        # seed ukázkové projekty pokud prázdné (pro demo)
+        if db.query(Project).count() == 0:
+            admin = db.query(User).filter(User.role == "admin").first() or db.query(User).first()
+            owner_id = admin.id if admin else None
+            examples = [
+                ("Pentagon - administrativni budova", "Pentagon s.r.o.", "Ukazkovy projekt - Shelly 14.7.-13.8.2026, 25 kWp + 15-20 kWh"),
+                ("Lakoplast - provozovna", "Lakoplast s.r.o.", "Ukazkovy projekt - Shelly 01/2025, denne spotreby"),
+            ]
+            for name, cust, desc in examples:
+                if not db.query(Project).filter(Project.name == name).first():
+                    p = Project(
+                        name=name,
+                        customer_name=cust,
+                        description=desc,
+                        owner_id=owner_id,
+                        share_code=generate_share_code(),
+                        antelon_params_json=json.dumps({"kwp": 25, "battery_kwh": 15, "soc_min_pct": 30, "texts": {}}),
+                        fve_params_json=json.dumps({}),
+                    )
+                    # ensure unique share_code
+                    while db.query(Project).filter(Project.share_code == p.share_code).first():
+                        p.share_code = generate_share_code()
+                    db.add(p)
+            db.commit()
     except Exception as e:
         print(f"seed users error: {e}")
+        import traceback; traceback.print_exc()
     finally:
         db.close()
     return eng
