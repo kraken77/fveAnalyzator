@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}OTE Report{% endblock %}
+{% block report_title %}Analýza Spotového Trhu (OTE){% endblock %}
+
+{% block content %}
+
+<div class="summary-box">
+    <h2>Výsledek pro rok {{ year }}</h2>
+    <p>Porovnání výnosu z prodeje <strong>1 kWp</strong> instalovaného výkonu.</p>
+
+    <div class="metric">
+        <span class="metric-label">Výnos Spot (s marží {{ margin }} Kč)</span>
+        <span class="metric-value">{{ total_spot_czk }}</span>
+    </div>
+    <div class="metric">
+        <span class="metric-label">Výnos Fix ({{ fixed_price }} Kč/kWh)</span>
+        <span class="metric-value">{{ total_fix_czk }}</span>
+    </div>
+    <div class="metric" style="width: 100%; margin-top: 10px;">
+        <span class="metric-label">Rozdíl (Spot - Fix)</span>
+        <span class="metric-value" style="color: {% if diff_val >= 0 %}green{% else %}red{% endif %};">
+            {{ diff_czk }}
+        </span>
+    </div>
+</div>
+
+<h2>Měsíční Data</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Měsíc</th>
+            <th class="text-right">Výroba (kWh)</th>
+            <th class="text-right">Výnos Spot (Kč)</th>
+            <th class="text-right">Průměrná Cena Spot (Kč/MWh)</th>
+            <th class="text-right">Výnos Fix (Kč)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in monthly_data %}
+        <tr>
+            <td>{{ row.month }}</td>
+            <td class="text-right">{{ row.production_kwh }}</td>
+            <td class="text-right">{{ row.revenue_spot }}</td>
+            <td class="text-right">{{ row.avg_price }}</td>
+            <td class="text-right">{{ row.revenue_fix }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2>Vysvětlivky</h2>
+<ul>
+    <li><strong>Spotový trh</strong>: Prodej za hodinové ceny OTE minus marže obchodníka.</li>
+    <li><strong>Fixní cena</strong>: Garantovaná výkupní cena po celý rok.</li>
+    <li><strong>Výroba</strong>: Simulovaná výroba z TMY dat pro danou lokalitu.</li>
+</ul>
+
+{% endblock %}

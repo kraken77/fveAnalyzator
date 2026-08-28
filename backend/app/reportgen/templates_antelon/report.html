@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-header">ANTELON ENERGY s.r.o.</div>
+  <div class="cover-title">{{ texts.cover_title }}</div>
+  <div class="cover-subtitle">{{ texts.cover_subtitle }}</div>
+  <div class="cover-note">{{ texts.cover_note }}</div>
+  <div class="cover-line"></div>
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="val">{{ params.kwp|int }} kWp</div><div class="lbl">Doporučená FVE</div></div>
+    <div class="kpi-card"><div class="val">20–25 kW</div><div class="lbl">Doporučený střídač</div></div>
+    <div class="kpi-card"><div class="val">{{ params.battery_kwh|int }} kWh</div><div class="lbl">Doporučená baterie</div></div>
+  </div>
+  <div style="font-size:7pt; color:#cbd5e1; margin-top:14pt;">{{ texts.cover_footer_note }}</div>
+  <div class="cover-footer"><span>ANTELON ENERGY s.r.o.</span><span>{{ texts.cover_title }} | návrh FVE z dat Shelly</span></div>
+</div>
+
+<!-- 1. SHRNUTI -->
+<div class="page">
+  <div class="section-num">{{ texts.s1_title }}</div>
+  <div class="section-sub">{{ texts.s1_sub }} — {{ customer_name }}</div>
+  <div class="kpi-row" style="margin-top:16pt;">
+    <div class="kpi-card"><div class="val">{{ kpi.n_complete }} dní</div><div class="lbl">Kompletní dny</div></div>
+    <div class="kpi-card"><div class="val">{{ fmt_total }} kWh</div><div class="lbl">Naměřená spotřeba</div></div>
+    <div class="kpi-card"><div class="val">{{ fmt_avg }} kWh</div><div class="lbl">Průměr den</div></div>
+    <div class="kpi-card"><div class="val">{{ fmt_annual }} MWh</div><div class="lbl">Odhad ročně</div></div>
+  </div>
+  <div class="bullet" style="margin-top:16pt;">{{ texts.s1_bullets }}</div>
+  {% if gaps %}<div class="source">Pozn.: Chybějící dny: {{ gaps|join(', ') }}. Kompletní dny: {{ complete_days|join(', ') }}</div>{% endif %}
+  <div class="page-footer"><span>ANTELON ENERGY s.r.o.</span><span>{{ texts.cover_title }} | návrh FVE z dat Shelly</span></div>
+</div>
+
+<!-- 2. PRACOVNI VS VIKEND -->
+<div class="page">
+  <div class="section-num">{{ texts.s2_title }}</div>
+  <div class="section-sub">{{ texts.s2_sub }}</div>
+  <div class="two-col">
+    <div class="col-left">
+      {% if plot_daily %}<img class="chart-img" src="data:image/png;base64,{{ plot_daily }}">{% endif %}
+    </div>
+    <div class="col-right">
+      <div class="conclusion-title">{{ texts.s2_conclusion_title }}</div>
+      <div class="bullet">{{ texts.s2_conclusion }}</div>
+      <div class="kpi-mini-row">
+        <div class="kpi-mini"><div class="val" style="font-weight:800;">{{ fmt_weekday }} kWh</div><div class="lbl" style="font-size:7pt; color:#566472;">Pracovní den</div></div>
+        <div class="kpi-mini orange"><div class="val" style="font-weight:800;">{{ fmt_weekend }} kWh</div><div class="lbl" style="font-size:7pt; color:#566472;">Víkend</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="source">Zdroj: Shelly consumption export, hodnoty Total.</div>
+  <div class="page-footer"><span>ANTELON ENERGY s.r.o.</span><span>{{ texts.cover_title }} | návrh FVE z dat Shelly</span></div>
+</div>
+
+<!-- 3. FAZOVE ZATIZENI -->
+<div class="page">
+  <div class="section-num">{{ texts.s3_title }}</div>
+  <div class="section-sub">{{ texts.s3_sub }}</div>
+  <div class="two-col">
+    <div class="col-left">
+      <table class="variant-table">
+        <tr><th>Fáze</th><th>Podíl</th></tr>
+        <tr><td>L1 / Phase A</td><td>{{ "%.1f"|format(phase.A) }} %</td></tr>
+        <tr><td>L2 / Phase B</td><td>{{ "%.1f"|format(phase.B) }} %</td></tr>
+        <tr><td>L3 / Phase C</td><td>{{ "%.1f"|format(phase.C) }} %</td></tr>
+      </table>
+      <div class="source">Fáze C je výrazně méně zatížená než A/B — doporučujeme kontrolu přerozdělení okruhů.</div>
+    </div>
+    <div class="col-right">
+      <div class="conclusion-title">Vyhodnocení</div>
+      <div class="bullet">• Fázová nevyváženost není překážkou FVE, ale je vhodné ji zohlednit v projektové přípravě.</div>
+    </div>
+  </div>
+  <div class="page-footer"><span>ANTELON ENERGY s.r.o.</span><span>{{ texts.cover_title }} | návrh FVE z dat Shelly</span></div>
+</div>
+
+<!-- 4. DOPORUCENE RESENI -->
+<div class="page">
+  <div class="section-num">{{ texts.s4_title }}</div>
+  <div class="section-sub">{{ texts.s4_sub }}</div>
+  <div class="kpi-row" style="margin-top:16pt;">
+    <div class="kpi-card"><div class="val">{{ params.kwp|int }} kWp</div><div class="lbl">Panely / DC výkon</div></div>
+    <div class="kpi-card"><div class="val">20–25 kW</div><div class="lbl">Střídač / AC výkon</div></div>
+    <div class="kpi-card"><div class="val">{{ params.battery_kwh|int }} kWh</div><div class="lbl">Baterie</div></div>
+    <div class="kpi-card orange"><div class="val">{{ params.soc_min|int }} % SoC</div><div class="lbl">Rezerva baterie</div></div>
+  </div>
+  <table class="variant-table">
+    <tr><th>Varianta</th><th>FVE</th><th>Baterie</th><th>Charakter</th></tr>
+    {% for v in variants %}
+    <tr class="{% if v.kwp == params.kwp %}recommended{% endif %}"><td>{{ loop.index }} — {{ v.label }}</td><td>{{ v.kwp }} kWp</td><td>{% if v.kwp==20 %}10 kWh{% elif v.kwp==25 %}15–20 kWh{% else %}20 kWh{% endif %}</td><td>{{ v.label }}</td></tr>
+    {% endfor %}
+  </table>
+  <div class="page-footer"><span>ANTELON ENERGY s.r.o.</span><span>{{ texts.cover_title }} | návrh FVE z dat Shelly</span></div>
+</div>
+
+<!-- 5. SPOTREBA VS VYROBA -->
+<div class="page">
+  <div class="section-num">{{ texts.s5_title }}</div>
+  <div class="section-sub">{{ texts.s5_sub }}</div>
+  <div class="two-col">
+    <div class="col-left">{% if plot_prod %}<img class="chart-img" src="data:image/png;base64,{{ plot_prod }}">{% endif %}</div>
+    <div class="col-right">
+      <div class="conclusion-title">Jak číst graf</div>
+      <div class="bullet">• Modrá = model spotřeby v běžný pracovní den.<br>• Zelená = model výroby FVE {{ params.kwp|int }} kWp v letním dni.<br>• Zelená plocha = přebytek → baterie / export.<br>• Červená plocha = deficit → baterie / síť.</div>
+      <div class="green-badge">Cíl návrhu: co nejvíce zelené energie spotřebovat v objektu</div>
+    </div>
+  </div>
+  <div class="source">Důležité: Shelly data jsou denní agregace. Graf je model typického dne, nikoliv reálně naměřený 15min profil.</div>
+  <div class="page-footer"><span>ANTELON ENERGY s.r.o.</span><span>{{ texts.cover_title }} | návrh FVE z dat Shelly</span></div>
+</div>
+
+<!-- 5b. ZELENA/CERVENA PLOCHA -->
+<div class="page">
+  <div class="section-num">{{ texts.s5b_title }}</div>
+  <div class="section-sub">Hodnoty pro typický pracovní den, FVE {{ params.kwp|int }} kWp</div>
+  <div class="kpi-row" style="margin-top:16pt;">
+    <div class="kpi-card"><div class="val">{{ fmt_green }} kWh</div><div class="lbl">Zelená plocha: výroba &gt; spotřeba</div></div>
+    <div class="kpi-card orange"><div class="val">{{ fmt_red }} kWh</div><div class="lbl">Červená plocha: spotřeba &gt; výroba</div></div>
+    <div class="kpi-card"><div class="val">{{ "%.1f"|format(green_red.prod_total) }} kWh</div><div class="lbl">Model výroby FVE {{ params.kwp|int }} kWp</div></div>
+  </div>
+  <div class="bullet" style="margin-top:14pt;">• Zelená plocha je energie k uložení do baterie / řízené spotřebě / exportu.<br>• Červená plocha je energie z baterie / sítě.<br>• Baterie {{ params.battery_kwh|int }} kWh dává smysl: kryje deficit a zachytí část přebytku.</div>
+  <div class="page-footer"><span>ANTELON ENERGY s.r.o.</span><span>{{ texts.cover_title }} | návrh FVE z dat Shelly</span></div>
+</div>
+
+<!-- 7. BATERIE -->
+<div class="page">
+  <div class="section-num">{{ texts.s7_title }}</div>
+  <div class="section-sub">Porovnání 15 kWh a 20 kWh při minimální rezervě {{ params.soc_min|int }} %</div>
+  {% if plot_batt %}<img class="chart-img" src="data:image/png;base64,{{ plot_batt }}">{% endif %}
+  <div class="bullet" style="margin-top:10pt;">• Baterie se drží nad {{ params.soc_min|int }} % rezervou.<br>• 15 kWh ekonomická, 20 kWh komfortní. Větší až po potvrzení 15min profilem.</div>
+  <div class="page-footer"><span>ANTELON ENERGY s.r.o.</span><span>{{ texts.cover_title }} | návrh FVE z dat Shelly</span></div>
+</div>
+
+<!-- 8. VARIANTY -->
+<div class="page">
+  <div class="section-num">{{ texts.s8_title }}</div>
+  <div class="section-sub">Volba výkonu panelů pro nabídku zákazníkovi</div>
+  <table class="variant-table">
+    <tr><th>Varianta</th><th>Výkon</th><th>Roční výroba*</th><th>Doporučení</th></tr>
+    {% for v in variants %}
+    <tr class="{% if v.kwp == params.kwp %}recommended{% endif %}"><td>{{ v.label }}</td><td>{{ v.kwp }} kWp</td><td>{{ v.annual_kwh }} kWh</td><td>{% if v.kwp==25 %}doporučený kompromis{% elif v.kwp==20 %}ekonomická{% else %}rezerva{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  <div class="source">*Orientačně 1 000 kWh/kWp/rok. Finální potvrdí projektová simulace dle střechy.</div>
+  <div class="page-footer"><span>ANTELON ENERGY s.r.o.</span><span>{{ texts.cover_title }} | návrh FVE z dat Shelly</span></div>
+</div>
+
+<!-- 9. DOPORUCENI -->
+<div class="page">
+  <div class="section-num">{{ texts.s9_title }}</div>
+  <div class="section-sub">Co poptat a co zajistí Antelon Energy s.r.o.</div>
+  <div class="two-col">
+    <div class="col-left">
+      <div class="conclusion-title">Doporučené technické zadání</div>
+      <div class="bullet">• FVE panely {{ params.kwp|int }} kWp.<br>• Střídač 20–25 kW AC.<br>• Baterie {{ params.battery_kwh|int }} kWh LFP, rezerva {{ params.soc_min|int }} %.<br>• Příprava rozšíření na cca 30 kWh.<br>• Monitoring a řízení přebytků.</div>
+    </div>
+    <div class="col-right">
+      <div class="conclusion-title">Antelon zajistí</div>
+      <div class="bullet">• Zaměření objektu a ploch.<br>• Návrh výkonu FVE, střídače a baterie.<br>• Projektovou přípravu a podklady pro distributora.<br>• Realizaci a uvedení do provozu.<br>• Monitoring a vyhodnocení úspory.</div>
+    </div>
+  </div>
+  <div class="page-footer"><span>ANTELON ENERGY s.r.o.</span><span>{{ texts.cover_title }} | návrh FVE z dat Shelly</span></div>
+</div>
+
+</body>
+</html>

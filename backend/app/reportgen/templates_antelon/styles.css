@@ -1,0 +1,58 @@
+@page {
+  size: 960pt 540pt;
+  margin: 0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DejaVu Sans', 'Helvetica', Arial, sans-serif;
+  color: #0b1f33;
+  font-size: 9pt;
+  line-height: 1.4;
+}
+.cover {
+  width: 960pt; height: 540pt;
+  background: #0b1f33;
+  color: white;
+  padding: 40pt 50pt 30pt 50pt;
+  position: relative;
+}
+.cover-header { color: #2fbf71; font-size: 7pt; letter-spacing: 1pt; text-transform: uppercase; }
+.cover-title { font-size: 32pt; font-weight: 800; margin-top: 40pt; }
+.cover-subtitle { font-size: 12pt; color: #cbd5e1; margin-top: 8pt; }
+.cover-note { font-size: 7pt; color: #94a3b8; margin-top: 6pt; }
+.cover-line { height: 2pt; background: #2fbf71; margin: 20pt 0 24pt 0; }
+.kpi-row { display: flex; gap: 16pt; }
+.kpi-card {
+  background: white; color: #0b1f33;
+  border-radius: 4pt; padding: 14pt 16pt;
+  width: 170pt; border-left: 4pt solid #2fbf71;
+}
+.kpi-card.orange { border-left-color: #f28e2b; }
+.kpi-card .val { font-size: 13pt; font-weight: 800; }
+.kpi-card .lbl { font-size: 7pt; color: #566472; margin-top: 2pt; }
+.cover-footer { position: absolute; bottom: 18pt; left: 50pt; right: 50pt; display: flex; justify-content: space-between; font-size: 6pt; color: #94a3b8; }
+.page {
+  width: 960pt; height: 540pt;
+  background: white;
+  padding: 28pt 36pt 28pt 36pt;
+  page-break-after: always;
+}
+.page:last-child { page-break-after: auto; }
+.section-num { color: #0b1f33; font-size: 16pt; font-weight: 800; }
+.section-sub { color: #566472; font-size: 8pt; margin-top: 2pt; border-bottom: 1pt solid #e2e8f0; padding-bottom: 8pt; }
+.two-col { display: flex; gap: 28pt; margin-top: 18pt; }
+.col-left { flex: 1.35; }
+.col-right { flex: 1; }
+.chart-img { width: 100%; border: 1pt solid #e2e8f0; border-radius: 3pt; }
+.conclusion-title { font-size: 11pt; font-weight: 800; color: #0b1f33; }
+.bullet { font-size: 7.5pt; color: #1e293b; margin-top: 6pt; white-space: pre-line; }
+.kpi-mini-row { display: flex; gap: 12pt; margin-top: 16pt; }
+.kpi-mini { background: white; border: 1pt solid #d7dde3; border-radius: 3pt; padding: 10pt 12pt; flex: 1; border-left: 4pt solid #2fbf71; }
+.kpi-mini.orange { border-left-color: #f28e2b; }
+.source { font-size: 6pt; color: #64748b; margin-top: 14pt; }
+.page-footer { display: flex; justify-content: space-between; font-size: 6pt; color: #64748b; border-top: 1pt solid #e2e8f0; padding-top: 6pt; margin-top: 12pt; }
+.green-badge { background: #2fbf71; color: white; padding: 6pt 10pt; border-radius: 3pt; font-size: 7pt; font-weight: 700; display: inline-block; margin-top: 10pt; }
+.variant-table { width: 100%; border-collapse: collapse; margin-top: 12pt; font-size: 8pt; }
+.variant-table th { background: #0b1f33; color: white; padding: 6pt 8pt; text-align: left; }
+.variant-table td { padding: 6pt 8pt; border-bottom: 1pt solid #e2e8f0; }
+.variant-table tr.recommended { background: #f0fdf4; font-weight: 700; }

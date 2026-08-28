@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="cs">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Ekonomická Analýza Návratnosti</title>
+    <style>
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #f39c12;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+
+        .section-title {
+            color: #f39c12;
+            font-size: 1.4em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+
+        .metrics-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .metric-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            width: 45%;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .metric-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .chart-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .chart-img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #eee;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #eee;
+            padding: 10px;
+            text-align: right;
+            font-size: 0.85em;
+        }
+
+        th {
+            background-color: #f9f9f9;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        .footer {
+            font-size: 0.8em;
+            color: #999;
+            text-align: center;
+            margin-top: 40px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .positive {
+            color: #27ae60;
+        }
+
+        .negative {
+            color: #e74c3c;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Ekonomická Analýza Návratnosti FVE</h1>
+        <p>Datum generování: {{ generation_date }}</p>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Vstupní Parametry</div>
+        <table style="width: 60%; margin-left: 0;">
+            <tr>
+                <td style="text-align: left;">Počáteční investice:</td>
+                <td><strong>{{ investment_cost }}</strong></td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Roční úspora (základ):</td>
+                <td><strong>{{ annual_savings }}</strong></td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Období analýzy:</td>
+                <td><strong>{{ years }} let</strong></td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Výnos S&P 500:</td>
+                <td><strong>{{ sp500_return }} %</strong></td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Očekávaná inflace:</td>
+                <td><strong>{{ inflation }} %</strong></td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Diskontní sazba:</td>
+                <td><strong>{{ discount_rate }} %</strong></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Klíčové Výsledky (na konci období)</div>
+        <table style="width: 100%;">
+            <tr>
+                <th style="text-align: left;">Metrika</th>
+                <th style="text-align: right;">Hodnota</th>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Doba návratnosti:</td>
+                <td><strong>{{ payback_years }} let</strong></td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Diskontovaná návratnost:</td>
+                <td><strong>{{ discounted_payback_years }} let</strong></td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Čistá současná hodnota (NPV):</td>
+                <td class="positive"><strong>{{ npv }}</strong></td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Zisk z FVE (kumulativní):</td>
+                <td class="positive"><strong>{{ final_pv_gain }}</strong></td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">FVE + Reinvestice úspor:</td>
+                <td class="positive"><strong>{{ final_pv_reinvest_gain }}</strong></td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Čistý zisk z S&P 500:</td>
+                <td><strong>{{ final_sp500_net }}</strong></td>
+            </tr>
+        </table>
+    </div>
+
+    {% if chart_investment %}
+    <div class="section">
+        <div class="section-title">Srovnání Investic</div>
+        <div class="chart-container">
+            <img class="chart-img" src="data:image/png;base64,{{ chart_investment }}" alt="Graf investic">
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="section" style="page-break-before: always;">
+        <div class="section-title">Detailní Tabulka Výsledků</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rok</th>
+                    <th>FVE Kumul. Tok</th>
+                    <th>FVE + Reinvestice</th>
+                    <th>S&P 500 Hrubý</th>
+                    <th>S&P 500 Čistý</th>
+                    <th>S&P 500 Celkem</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in raw_data %}
+                <tr>
+                    <td style="text-align: center;">{{ row.Year }}</td>
+                    <td>{{ row.PV_Cumulative_CashFlow }}</td>
+                    <td>{{ row.PV_Reinvest_Net_Result }}</td>
+                    <td>{{ row.SP500_Gross_Gain }}</td>
+                    <td>{{ row.SP500_Net_Result }}</td>
+                    <td>{{ row.SP500_Total_Value }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        fveAnalyzator - Profesionální analýza fotovoltaických systémů
+    </div>
+</body>
+
+</html>

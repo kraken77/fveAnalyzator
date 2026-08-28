@@ -137,3 +137,15 @@ cython_debug/
 # IDEs
 .vscode/
 .idea/
+
+# ReportGen
+data/reportgen.db
+data/projects/
+data/*.db
+data/*.db-journal
+frontend-web/node_modules/
+frontend-web/dist/
+frontend-web/.env
+docs/superpowers/specs/.tmp/
+backend/data/
+backend/data/*.db

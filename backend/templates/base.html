@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="cs">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Report{% endblock %}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+
+            @bottom-center {
+                content: "Strana " counter(page) " z " counter(pages);
+                font-family: 'Helvetica', sans-serif;
+                font-size: 9pt;
+                color: #777;
+            }
+        }
+
+        body {
+            font-family: 'Helvetica', sans-serif;
+            font-size: 10pt;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            font-size: 18pt;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #2980b9;
+            font-size: 14pt;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        h3 {
+            color: #34495e;
+            font-size: 12pt;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            border: none;
+            margin: 0;
+            padding: 0;
+            font-size: 24pt;
+        }
+
+        .header .subtitle {
+            color: #7f8c8d;
+            font-size: 12pt;
+        }
+
+        .timestamp {
+            text-align: right;
+            font-size: 9pt;
+            color: #95a5a6;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #bdc3c7;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #ecf0f1;
+            font-weight: bold;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .highlight {
+            background-color: #f1c40f;
+            font-weight: bold;
+        }
+
+        .summary-box {
+            background-color: #f7f9f9;
+            border: 1px solid #bdc3c7;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            display: inline-block;
+            width: 45%;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            font-weight: bold;
+            display: block;
+            color: #7f8c8d;
+        }
+
+        .metric-value {
+            font-size: 14pt;
+            color: #2c3e50;
+        }
+
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 8pt;
+            color: #bdc3c7;
+            border-top: 1px solid #ecf0f1;
+            padding-top: 10px;
+        }
+
+        .chart-container {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+
+        .chart-img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #eee;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="timestamp">Generováno: {{ generation_date }}</div>
+
+    <div class="header">
+        <h1>{% block report_title %}Report{% endblock %}</h1>
+        <div class="subtitle">fveAnalyzator Report</div>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <div class="footer">
+        Rabiav s.r.o. &copy; 2026 | Vygenerováno automaticky
+    </div>
+</body>
+
+</html>

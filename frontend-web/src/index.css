@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #0b1f33;
+  --green: #2fbf71;
+  --orange: #f28e2b;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #f8fafc;
+  color: #0b1f33;
+}
+
+.btn-primary {
+  @apply bg-antelonGreen text-white font-semibold px-5 py-2.5 rounded-lg hover:brightness-110 transition shadow-sm;
+}
+.btn-secondary {
+  @apply bg-white border border-slate-200 text-navy font-medium px-5 py-2.5 rounded-lg hover:bg-slate-50 transition;
+}
+.btn-navy {
+  @apply bg-navy text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-800 transition;
+}
+.card {
+  @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+}
+.kpi-card {
+  @apply bg-white rounded-lg border border-slate-200 p-4 border-l-4;
+}
+.blur-teaser {
+  filter: blur(6px);
+  user-select: none;
+  pointer-events: none;
+}
