@@ -102,23 +102,35 @@ def get_session_factory(db_path=None):
 def init_db(db_path=None):
     eng = get_engine(db_path)
     Base.metadata.create_all(bind=eng)
-    # seed admin if env provided
-    admin_email = os.environ.get("RG_ADMIN_EMAIL")
-    admin_pass = os.environ.get("RG_ADMIN_PASSWORD")
-    jwt_secret = os.environ.get("RG_JWT_SECRET")
-    # Only seed if both provided and no admin exists
-    if admin_email and admin_pass:
-        Session = get_session_factory(db_path)
-        db = Session()
-        try:
-            exists = db.query(User).filter(User.email == admin_email).first()
+    # seed default users (admin + antelon + customer demo)
+    # env overrides, jinak výchozí hodnoty pro snadný test
+    defaults = [
+        (os.environ.get("RG_ADMIN_EMAIL", "admin@antelon.local"),
+         os.environ.get("RG_ADMIN_PASSWORD", "Admin123!"),
+         "admin"),
+        (os.environ.get("RG_ANTELON_EMAIL", "antelon@antelon.local"),
+         os.environ.get("RG_ANTELON_PASSWORD", "Antelon123!"),
+         "antelon"),
+        (os.environ.get("RG_CUSTOMER_EMAIL", "zakaznik@antelon.local"),
+         os.environ.get("RG_CUSTOMER_PASSWORD", "Zakaznik123!"),
+         "customer"),
+    ]
+    Session = get_session_factory(db_path)
+    db = Session()
+    try:
+        for email, passwd, role in defaults:
+            if not email or not passwd:
+                continue
+            exists = db.query(User).filter(User.email == email).first()
             if not exists:
                 from .auth import hash_password
-                u = User(email=admin_email, password_hash=hash_password(admin_pass), role="admin")
+                u = User(email=email, password_hash=hash_password(passwd), role=role)
                 db.add(u)
-                db.commit()
-        finally:
-            db.close()
+        db.commit()
+    except Exception as e:
+        print(f"seed users error: {e}")
+    finally:
+        db.close()
     return eng
 
 def get_db():

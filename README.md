@@ -65,7 +65,18 @@ Nejjednodušší způsob pro spuštění celé aplikace.
     - Backend API (FastAPI): [http://localhost:8051/docs](http://localhost:8051/docs)
     - Frontend (Streamlit, legacy): [http://localhost:8550](http://localhost:8550)
 
-    Výchozí admin: `admin@antelon.local` / `Admin123!` (nastavitelné přes `.env`: `RG_ADMIN_EMAIL`, `RG_ADMIN_PASSWORD`, `RG_JWT_SECRET`, `RG_PUBLIC_URL`).
+    Výchozí účty (seed při prvním startu, hesla lze změnit v `.env`):
+
+    | Role | E-mail | Heslo | Práva |
+    |------|--------|-------|-------|
+    | `admin` | `admin@antelon.local` | `Admin123!` | vše + správa uživatelů/spotřebičů |
+    | `antelon` | `antelon@antelon.local` | `Antelon123!` | všechny projekty, nahrávání fotek, čistý PDF |
+    | `customer` | `zakaznik@antelon.local` | `Zakaznik123!` | jen přiřazené projekty (přes QR/odkaz), čistý PDF |
+    | `anonymous` | — | — | teaser `/p/{code}` + PDF s vodoznakem |
+
+    Nastavitelné přes `.env`: `RG_ADMIN_*`, `RG_ANTELON_*`, `RG_CUSTOMER_*`, `RG_JWT_SECRET`, `RG_PUBLIC_URL` (viz `.env.example`). Další uživatelé přes registraci na webu nebo `admin` → `PUT /admin/users/{id}`.
+
+    Přihlašovací jména jsou zdokumentována zde a v `.env.example`.
 
 ### 1b. ReportGen — generátor PDF reportů (nový modul)
 
