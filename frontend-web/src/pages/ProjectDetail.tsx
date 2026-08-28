@@ -402,11 +402,28 @@ export default function ProjectDetail() {
       const res = await client.get(`/projects/${id}/pdfs/${pdfId}/download`, {
         responseType: "blob",
       });
+      // try to get filename from Content-Disposition or X-Filename
+      let filename = `report-${pdfId}.pdf`;
+      const disposition = (res.headers as Record<string, string>)["content-disposition"] || (res.headers as Record<string, string>)["Content-Disposition"];
+      const xFilename = (res.headers as Record<string, string>)["x-filename"] || (res.headers as Record<string, string>)["X-Filename"];
+      if (xFilename) {
+        filename = xFilename;
+      } else if (disposition) {
+        const match = disposition.match(/filename="([^"]+)"/) || disposition.match(/filename=([^;]+)/);
+        if (match) filename = match[1].replace(/"/g, "").trim();
+      } else {
+        // fallback from pdfs list
+        const pdf = pdfs.find((p) => String(p.id) === String(pdfId));
+        if (pdf) {
+          const slug = (project?.name || "projekt").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "projekt";
+          filename = `${slug}_${String(pdf.template).toLowerCase()}_v${pdf.version}.pdf`;
+        }
+      }
       const blob = new Blob([res.data as BlobPart], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `report-${pdfId}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();

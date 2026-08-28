@@ -30,6 +30,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition", "X-Filename"],
 )
 
 # ReportGen module
@@ -487,10 +488,11 @@ def run_economic_report(data: dict):
         pdf_bytes = report_gen.generate_economic_report(data)
         
         from fastapi import Response
+        fname = f"fve_economic_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=Ekonomicka_Analyza.pdf"}
+            headers={"Content-Disposition": f'attachment; filename="{fname}"', "X-Filename": fname}
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -568,7 +570,8 @@ def generate_energy_report_endpoint(analysis_result: dict):
     """
     try:
         pdf_bytes = report_gen.generate_energy_report(analysis_result)
-        return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=EnergyReport.pdf"})
+        fname = f"fve_energy_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+        return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{fname}"', "X-Filename": fname})
     except Exception as e:
         # In production, log error
         print(f"Report Error: {e}")
@@ -581,7 +584,8 @@ def generate_ote_report_endpoint(ote_result: dict):
     """
     try:
         pdf_bytes = report_gen.generate_ote_report(ote_result)
-        return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=OteReport.pdf"})
+        fname = f"fve_ote_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+        return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{fname}"', "X-Filename": fname})
     except Exception as e:
         print(f"Report Error: {e}")
         return {"status": "error", "message": str(e)}

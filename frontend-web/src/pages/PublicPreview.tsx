@@ -109,24 +109,34 @@ export default function PublicPreview() {
   };
 
   const handleDownload = async (pdfId: string | number) => {
-    // attempt anonymous download via publicClient if project id known, else client
-    // data may contain project.id and pdfs
     const pid = (data?.project?.id as string | number | undefined) ?? (data as { project_id?: string | number })?.project_id;
     if (!pid) {
       alert("Nelze stáhnout — chybí ID projektu");
       return;
     }
     try {
-      // try public download without auth (watermarked for anonymous)
       const url = `/projects/${pid}/pdfs/${pdfId}/download`;
-      // choose client depending on auth; for anonymous we want publicClient
       const chosen = token ? client : publicClient;
       const res = await chosen.get(url, { responseType: "blob" });
+      let filename = `report-${pdfId}.pdf`;
+      const disposition = (res.headers as Record<string, string>)["content-disposition"] || (res.headers as Record<string, string>)["Content-Disposition"];
+      const xFilename = (res.headers as Record<string, string>)["x-filename"] || (res.headers as Record<string, string>)["X-Filename"];
+      if (xFilename) filename = xFilename;
+      else if (disposition) {
+        const match = disposition.match(/filename="([^"]+)"/) || disposition.match(/filename=([^;]+)/);
+        if (match) filename = match[1].replace(/"/g, "").trim();
+      } else {
+        const pdf = (data?.pdfs as Array<{ id: string | number; template?: string; version?: string | number }>|undefined)?.find((p) => String(p.id) === String(pdfId));
+        const projName = (data?.project?.name as string) || (data?.name as string) || "projekt";
+        const slug = projName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "projekt";
+        const tmpl = String(pdf?.template || "report").toLowerCase();
+        filename = `${slug}_${tmpl}_v${String(pdf?.version || pdfId)}.pdf`;
+      }
       const blob = new Blob([res.data as BlobPart], { type: "application/pdf" });
       const objUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = objUrl;
-      a.download = `report-${pdfId}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();

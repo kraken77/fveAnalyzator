@@ -1,6 +1,8 @@
 import os
 import json
 import base64
+import re
+import unicodedata
 from datetime import datetime
 from typing import Optional, List
 
@@ -15,6 +17,18 @@ from .shelly_parser import parse_shelly_csv, merge_parsed_results, extract_consu
 from .antelon import antelon_analyze
 from .antelon_pdf import generate_antelon_pdf
 from .pdf_utils import generate_qr_base64, apply_watermark_to_pdf
+
+def _slugify(name: str, maxlen: int = 40) -> str:
+    if not name:
+        return "projekt"
+    # normalize, remove diacritics
+    nfkd = unicodedata.normalize("NFKD", name)
+    ascii_only = "".join(c for c in nfkd if not unicodedata.combining(c))
+    slug = re.sub(r"[^a-zA-Z0-9]+", "_", ascii_only).strip("_").lower()
+    slug = re.sub(r"_+", "_", slug)
+    if len(slug) > maxlen:
+        slug = slug[:maxlen].rstrip("_")
+    return slug or "projekt"
 
 router = APIRouter(prefix="/api/v1", tags=["reportgen"])
 
@@ -598,8 +612,11 @@ def download_pdf(project_id: int, pdf_id: int, mode: str = Query("full"), user: 
     if is_anonymous:
         pdf_bytes = apply_watermark_to_pdf(pdf_bytes)
 
-    filename = f"{project.name}_{pv.template}_v{pv.version}.pdf"
-    return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+    slug = _slugify(project.name)
+    # sjednotit template na ote (uzivatel psal eto, ale backend pouziva ote)
+    tmpl = pv.template.lower().replace("eto", "ote")
+    filename = f"{slug}_{tmpl}_v{pv.version}.pdf"
+    return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename=\"{filename}\"', "X-Filename": filename})
 
 # ---------- OTE ----------
 @router.get("/ote/status")
