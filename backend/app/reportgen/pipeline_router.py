@@ -91,7 +91,36 @@ def list_template_steps(template_id: int, user: User = Depends(require_roles("ad
         raise HTTPException(404, "Šablona nenalezena nebo bez kroků")
     return [{"id": s.id, "code": s.code, "name": s.name, "phase": s.phase, "order": s.order,
              "est_admin_minutes": s.est_admin_minutes, "est_work_minutes": s.est_work_minutes,
-             "state_model": s.state_model or "simple"} for s in steps]
+             "state_model": s.state_model or "simple",
+             "allowed_roles": json.loads(s.allowed_roles_json) if s.allowed_roles_json else [],
+             "auto_hook": s.auto_hook, "parallel_group": s.parallel_group} for s in steps]
+
+
+class TemplateStepUpdate(BaseModel):
+    name: Optional[str] = None
+    est_admin_minutes: Optional[int] = None
+    est_work_minutes: Optional[int] = None
+    allowed_roles: Optional[list] = None
+
+
+@router.put("/admin/pipeline-templates/{template_id}/steps/{step_id}")
+def update_template_step(template_id: int, step_id: int, data: TemplateStepUpdate,
+                         user: User = Depends(require_roles("admin")),
+                         db: Session = Depends(get_db)):
+    s = db.query(PipelineStep).filter(
+        PipelineStep.id == step_id, PipelineStep.template_id == template_id).first()
+    if not s:
+        raise HTTPException(404, "Krok nenalezen")
+    if data.name is not None:
+        s.name = data.name
+    if data.est_admin_minutes is not None:
+        s.est_admin_minutes = data.est_admin_minutes
+    if data.est_work_minutes is not None:
+        s.est_work_minutes = data.est_work_minutes
+    if data.allowed_roles is not None:
+        s.allowed_roles_json = json.dumps(data.allowed_roles, ensure_ascii=False)
+    db.commit()
+    return {"status": "ok", "id": s.id, "name": s.name}
 
 
 class AttachIn(BaseModel):
@@ -487,6 +516,48 @@ def invoice_item_status(project_id: int, item_id: int, data: InvoiceStatusIn,
         raise HTTPException(400, "Neplatný status (issued|paid)")
     db.refresh(inv)
     return {"id": inv.id, "status": inv.status, "doc_number": inv.doc_number}
+
+
+@router.get("/projects/{project_id}/economy")
+def project_economy_endpoint(project_id: int, user: User = Depends(get_current_user),
+                             db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    from .economy import project_economy
+    return project_economy(db, project_id)
+
+
+# ---------- Sazby (RateCard) — admin (M5.3) ----------
+
+@router.get("/admin/rate-cards")
+def list_rate_cards(user: User = Depends(require_roles("admin")),
+                    db: Session = Depends(get_db)):
+    from .storage import RateCard
+    rows = db.query(RateCard).order_by(RateCard.role, RateCard.kind).all()
+    return [{"id": r.id, "role": r.role, "kind": r.kind, "rate_czk_h": r.rate_czk_h,
+             "active": r.active} for r in rows]
+
+
+class RateCardUpdate(BaseModel):
+    rate_czk_h: Optional[float] = None
+    active: Optional[bool] = None
+
+
+@router.put("/admin/rate-cards/{rate_id}")
+def update_rate_card(rate_id: int, data: RateCardUpdate,
+                     user: User = Depends(require_roles("admin")),
+                     db: Session = Depends(get_db)):
+    from .storage import RateCard
+    r = db.query(RateCard).filter(RateCard.id == rate_id).first()
+    if not r:
+        raise HTTPException(404, "Sazba nenalezena")
+    if data.rate_czk_h is not None:
+        r.rate_czk_h = data.rate_czk_h
+    if data.active is not None:
+        r.active = data.active
+    db.commit()
+    db.refresh(r)
+    return {"id": r.id, "role": r.role, "kind": r.kind, "rate_czk_h": r.rate_czk_h,
+            "active": r.active}
 
 
 # ---------- Notifikace (M2.3) ----------

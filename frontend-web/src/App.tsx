@@ -9,10 +9,22 @@ import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import PublicPreview from "./pages/PublicPreview";
 import Admin from "./pages/Admin";
+import Dispecink from "./pages/Dispecink";
+import PipelineDetail from "./pages/PipelineDetail";
+import Materialy from "./pages/Materialy";
+import AdminPipeline from "./pages/AdminPipeline";
 
-function ProtectedLayout({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
+function ProtectedLayout({
+  children,
+  adminOnly = false,
+  roles,
+}: {
+  children: React.ReactNode;
+  adminOnly?: boolean;
+  roles?: string[];
+}) {
   return (
-    <ProtectedRoute adminOnly={adminOnly}>
+    <ProtectedRoute adminOnly={adminOnly} roles={roles}>
       <Layout>{children}</Layout>
     </ProtectedRoute>
   );
@@ -44,7 +56,45 @@ export default function App() {
             }
           />
 
-          {/* protected */}
+          {/* dispečink (interní uživatelé) */}
+          <Route
+            path="/dispecink"
+            element={
+              <ProtectedLayout roles={["admin", "antelon", "sales", "designer", "buyer", "warehouse", "subsidy", "connection", "electrician", "roofer", "inspector"]}>
+                <Dispecink />
+              </ProtectedLayout>
+            }
+          />
+
+          {/* materiály */}
+          <Route
+            path="/materialy"
+            element={
+              <ProtectedLayout roles={["admin", "antelon", "buyer", "warehouse"]}>
+                <Materialy />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/projects/:id/materialy"
+            element={
+              <ProtectedLayout>
+                <Materialy />
+              </ProtectedLayout>
+            }
+          />
+
+          {/* pipeline detail */}
+          <Route
+            path="/projects/:id/pipeline"
+            element={
+              <ProtectedLayout>
+                <PipelineDetail />
+              </ProtectedLayout>
+            }
+          />
+
+          {/* classic */}
           <Route
             path="/projects"
             element={
@@ -69,9 +119,17 @@ export default function App() {
               </ProtectedLayout>
             }
           />
+          <Route
+            path="/admin/pipeline"
+            element={
+              <ProtectedLayout adminOnly>
+                <AdminPipeline />
+              </ProtectedLayout>
+            }
+          />
 
-          <Route path="/" element={<Navigate to="/projects" replace />} />
-          <Route path="*" element={<Navigate to="/projects" replace />} />
+          <Route path="/" element={<Navigate to="/dispecink" replace />} />
+          <Route path="*" element={<Navigate to="/dispecink" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

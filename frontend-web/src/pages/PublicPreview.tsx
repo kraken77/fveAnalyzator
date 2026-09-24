@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { publicClient } from "../api/client";
 import client from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import type { PipelineStep } from "../types";
 
 interface PublicData {
   project?: {
@@ -42,6 +43,7 @@ export default function PublicPreview() {
   const [error, setError] = useState<string | null>(null);
   const [joinMsg, setJoinMsg] = useState<string | null>(null);
   const [joinBusy, setJoinBusy] = useState(false);
+  const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[] | null>(null);
 
   const isLinked =
     (data?.is_linked as boolean) ?? (data?.linked as boolean) ?? !!user; // fallback: if logged and project fetch succeeded without blur concept
@@ -83,6 +85,22 @@ export default function PublicPreview() {
     };
     fetchPublic();
   }, [code, token]);
+
+  // customer portal: fetch pipeline status when the visitor is linked to the project
+  useEffect(() => {
+    if (!isLinked || !token) return;
+    const pid =
+      (data?.project?.id as string | number | undefined) ??
+      (data as { project_id?: string | number }).project_id;
+    if (!pid) return;
+    client
+      .get(`/projects/${pid}/pipeline`)
+      .then((res) => {
+        const view = res.data as { steps?: PipelineStep[] };
+        setPipelineSteps((view.steps ?? []).filter((s) => !s.hidden));
+      })
+      .catch(() => setPipelineSteps(null));
+  }, [isLinked, token, data?.project?.id]);
 
   const handleJoin = async () => {
     if (!code) return;
@@ -288,6 +306,51 @@ export default function PublicPreview() {
         )}
         {isLinked && joinMsg && (
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm px-3 py-2 rounded">{joinMsg}</div>
+        )}
+
+        {/* customer portal: pipeline status */}
+        {isLinked && pipelineSteps && pipelineSteps.length > 0 && (
+          <div className="card p-5 border-l-4 border-l-antelonGreen">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-navy">Procesní stav zakázky</h3>
+              <Link to={`/projects/${(data?.project?.id as string | number) ?? ""}/pipeline`} className="text-xs text-antelonGreen hover:underline">
+                Detail pipeline →
+              </Link>
+            </div>
+            <p className="text-xs text-slateMuted mt-0.5 mb-3">
+              Kam zakázka pokročila. Kroky „čekající na vás“ jsou zvýrazněné.
+            </p>
+            <div className="space-y-1.5">
+              {pipelineSteps.map((s) => {
+                const waiting =
+                  s.status === "sent"
+                    ? "bg-amber-50 border-amber-300"
+                    : s.status === "in_progress" && (s.code === "sber_podkladu" || s.code === "odsouhlaseni_predbezne" || s.code === "sod" || s.code === "sod_signed")
+                      ? "bg-amber-50 border-amber-300"
+                      : "";
+                return (
+                  <div key={String(s.id)} className={`flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 ${waiting || "border-transparent"}`}>
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-slate-300"
+                      style={{
+                        background:
+                          s.status === "done" ? "#10b981" :
+                          s.status === "in_progress" ? "#f59e0b" :
+                          s.status === "planned" ? "#0ea5e9" :
+                          s.status === "cancelled" || s.status === "skipped" ? "#cbd5e1" : "#e2e8f0",
+                      }}
+                    />
+                    <span className="flex-1">{s.name}</span>
+                    <span className="text-xs text-slate-500">{s.status}</span>
+                    {waiting && (
+                      <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
+                        čeká na vás
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* sections with blur logic */}

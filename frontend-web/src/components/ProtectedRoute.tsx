@@ -4,9 +4,11 @@ import { useAuth } from "../context/AuthContext";
 export default function ProtectedRoute({
   children,
   adminOnly = false,
+  roles: allowedRoles,
 }: {
   children: React.ReactNode;
   adminOnly?: boolean;
+  roles?: string[];
 }) {
   const { user, token, loading } = useAuth();
 
@@ -22,7 +24,12 @@ export default function ProtectedRoute({
     return <Navigate to="/login" replace />;
   }
 
-  if (adminOnly && user.role !== "admin") {
+  const userRoles = user.roles && user.roles.length ? user.roles : [user.role];
+
+  if (adminOnly && !userRoles.includes("admin")) {
+    return <Navigate to="/projects" replace />;
+  }
+  if (allowedRoles && allowedRoles.length && !allowedRoles.some((r) => userRoles.includes(r))) {
     return <Navigate to="/projects" replace />;
   }
 

@@ -1,9 +1,43 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, hasAnyRole } from "../context/AuthContext";
+import RoleSwitcher from "./RoleSwitcher";
+import { useEffect, useState } from "react";
+import client from "../api/client";
+import type { Notification } from "../types";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotif, setShowNotif] = useState(false);
+
+  const isCustomer = hasAnyRole(user, ["customer"]);
+  const showMaterialy = hasAnyRole(user, ["admin", "antelon", "buyer", "warehouse"]);
+  const showAdmin = hasAnyRole(user, ["admin"]);
+
+  useEffect(() => {
+    if (user && !isCustomer) {
+      client
+        .get("/notifications")
+        .then((res) => setNotifications((res.data as Notification[]) || []))
+        .catch(() => setNotifications([]));
+    }
+  }, [user, isCustomer]);
+
+  const unread = notifications.filter((n) => !n.read).length;
+
+  const markAllRead = async () => {
+    try {
+      await Promise.all(
+        notifications
+          .filter((n) => !n.read)
+          .map((n) => client.post(`/notifications/${n.id}/read`)),
+      );
+      setNotifications(notifications.map((n) => ({ ...n, read: true })));
+    } catch {
+      // ignore
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -14,7 +48,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col bg-slate-50">
       <header className="bg-navy text-white sticky top-0 z-40 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link to="/projects" className="flex items-center gap-3">
+          <Link to={isCustomer ? "/projects" : "/dispecink"} className="flex items-center gap-3">
             <div className="w-8 h-8 rounded bg-antelonGreen flex items-center justify-center font-black text-navy text-sm">
               A
             </div>
@@ -22,33 +56,86 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               ANTELON ENERGY s.r.o.
             </span>
             <span className="hidden sm:inline text-xs font-medium bg-white/10 px-2 py-1 rounded">
-              ReportGen
+              Dispečink
             </span>
           </Link>
 
-          <nav className="flex items-center gap-4 sm:gap-6">
-            <Link to="/projects" className="text-sm font-medium hover:text-antelonGreen transition">
-              Projekty
-            </Link>
-            {user?.role === "admin" && (
+          <nav className="flex items-center gap-3 sm:gap-5">
+            {!isCustomer && (
               <Link
-                to="/admin"
+                to="/dispecink"
                 className="text-sm font-medium hover:text-antelonGreen transition"
               >
+                Dispečink
+              </Link>
+            )}
+            <Link to="/projects" className="text-sm font-medium hover:text-antelonGreen transition">
+              {isCustomer ? "Moje projekty" : "Projekty"}
+            </Link>
+            {showMaterialy && (
+              <Link to="/materialy" className="text-sm font-medium hover:text-antelonGreen transition">
+                Materiály
+              </Link>
+            )}
+            {showAdmin && (
+              <Link to="/admin" className="text-sm font-medium hover:text-antelonGreen transition">
                 Administrace
               </Link>
             )}
+
             {user ? (
               <div className="flex items-center gap-3">
+                {!isCustomer && (
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        setShowNotif((s) => !s);
+                        if (!showNotif && unread > 0) {
+                          // only refresh if opened fresh
+                        }
+                      }}
+                      className="relative text-sm bg-white/10 hover:bg-white/20 w-8 h-8 rounded-lg flex items-center justify-center"
+                      title="Notifikace"
+                      data-testid="notif-bell"
+                    >
+                      🔔
+                      {unread > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-antelonOrange text-navy text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                          {unread}
+                        </span>
+                      )}
+                    </button>
+                    {showNotif && (
+                      <div className="absolute right-0 mt-2 w-80 bg-white text-navy rounded-lg shadow-xl border border-slate-200 z-50 max-h-96 overflow-auto">
+                        <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+                          <p className="text-xs font-bold uppercase text-slateMuted">Notifikace</p>
+                          {unread > 0 && (
+                            <button onClick={markAllRead} className="text-xs text-antelonGreen hover:underline">
+                              Přečteno
+                            </button>
+                          )}
+                        </div>
+                        {notifications.length === 0 ? (
+                          <p className="text-sm text-slateMuted p-4">Žádné notifikace</p>
+                        ) : (
+                          notifications.slice(0, 30).map((n) => (
+                            <div key={String(n.id)} className={`px-4 py-2 border-b border-slate-50 text-sm ${n.read ? "opacity-60" : ""}`}>
+                              <p>{n.text}</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                {n.created_at ? new Date(n.created_at).toLocaleString("cs-CZ") : ""}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <RoleSwitcher />
                 <div className="hidden sm:flex flex-col items-end leading-tight">
                   <span className="text-xs opacity-80">{user.email}</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-antelonGreen text-navy">
-                    {user.role}
-                  </span>
                 </div>
-                <span className="sm:hidden text-xs font-semibold px-2 py-0.5 rounded bg-antelonGreen text-navy">
-                  {user.role}
-                </span>
                 <button
                   onClick={handleLogout}
                   className="text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition"
@@ -76,7 +163,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <footer className="border-t bg-white py-4 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} Antelon Energy s.r.o. — ReportGen
+        © {new Date().getFullYear()} Antelon Energy s.r.o. — ReportGen / Dispečink
       </footer>
     </div>
   );

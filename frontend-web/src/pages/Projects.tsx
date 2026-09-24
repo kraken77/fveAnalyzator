@@ -180,9 +180,8 @@ export default function Projects() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {projects.map((p) => (
-            <Link
+            <div
               key={String(p.id)}
-              to={`/projects/${p.id}`}
               className="card p-5 border-l-4 border-l-antelonGreen hover:shadow-md transition group"
             >
               <div className="flex items-start justify-between gap-2">
@@ -201,15 +200,27 @@ export default function Projects() {
               {p.description && (
                 <p className="text-xs text-slate-500 mt-2 line-clamp-2">{p.description}</p>
               )}
-              <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center justify-between mt-4 gap-2">
                 <span className="text-xs text-slate-400">
                   {p.created_at ? new Date(p.created_at).toLocaleDateString("cs-CZ") : ""}
                 </span>
-                <span className="text-xs font-medium text-antelonGreen group-hover:underline">
-                  Otevřít →
-                </span>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/projects/${p.id}/pipeline`}
+                    className="text-xs font-medium text-antelonGreen hover:underline"
+                    title="Procesní pipeline"
+                  >
+                    Pipeline →
+                  </Link>
+                  <Link
+                    to={`/projects/${p.id}`}
+                    className="text-xs font-medium text-navy hover:text-antelonGreen hover:underline"
+                  >
+                    Projekt →
+                  </Link>
+                </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}
