@@ -89,6 +89,26 @@ Nový modul `backend/app/reportgen` + `frontend-web`:
 
 Viz `docs/superpowers/specs/2026-08-28-reportgen-design.md`.
 
+### 1c. Procesní pipeline (Dispečink)
+
+End-to-end procesní dispečink zakázek (lead → příprava/smlouva → realizace → servis) v modulech `backend/app/reportgen` (pipeline, AI, ekonomika, materiály, fakturace) + `frontend-web` (stránka **Dispečink**).
+
+- **Typy zakázek a šablony**: 11 šablon (`rd`, `byt`, `firma`, `obec`, `bojler`, `rozsireni`, `ostatni`, …) se seedují při startu; admin je vidí a edituje kroky v `Administrace → Šablony`.
+- **Import dispečinku**: `Administrace → Import` nahraje `PROCESNÍ DISPEČINK.xlsx` (idempotentně, duplicity se přeskočí). Alternativně `POST /api/v1/admin/import/dispecink`.
+- **Tabule zakázek**: `/dispecink` — filtry (typ, stav, text), proužek pipeline u každé zakázky, klikaní do detailu.
+- **Pipeline detail**: `/projects/{id}/pipeline` — kroky ve fázích, plánování (datum, odpovědná osoba), přechody (začít/dokončit/odeslat/podepsat/přeskočit/zrušit), brány a podmínky (např. dotace NZÚ, půjčka), paralelní větve; historie událostí.
+- **AI kroky**: návrh FVE, baterie, dotace NZÚ (C.3), půjčka, podrobná nabídka — generují se automaticky (`ai_chain`) nebo ručně; výstup musí admin/antelon schválit nebo zamítnout.
+- **Finanční efekty**: 2 500 Kč za technické posouzení (faktura při „pokračujeme“, žádná při „Zamítnuto“ → zakázka `cancelled`), sleva −2 500 Kč při podpisu SoD, zálohová/finální faktura.
+- **Časové výkazy a montéři**: `Pipeline detail → Časové výkazy` (minuty admin/práce na krok), souhrn, výkaz montérů CSV (`/admin/reports/monteri-csv`).
+- **Ekonomika**: náklad admin/work dle sazebníku RateCard (kancelář 500 Kč/h, montáž 450–550 Kč/h), marže z číselníku `settings` (default 30 %) — `Pipeline detail → Ekonomika`. Admin a práce se nikdy nesčítají.
+- **Materiály**: číselník (`/materialy`, správa admin/nákupčí) + matice plán/objednávka/výdej/skutečnost po projektu s cenovým snapshotem.
+- **Fakturace**: položky dokladů v projektu, vystavení (čísla `inv-{projekt}-{seq}`), stav `issued → paid`.
+- **Role a role-switcher**: uživatel může mít více rolí (`/auth/me` vrací `roles`); přepínač rolí v hlavičce. Role: `admin`, `antelon`, `sales`, `designer`, `buyer`, `warehouse`, `subsidy`, `connection`, `electrician`, `roofer`, `inspector`, `customer`.
+- **Customer portál**: zákazník přes sdílecí odkaz (`/p/{code}`) vidí stav pipeline a kroky „čeká na vás“ (sběr podkladů, odsouhlasení nabídky, podpis SoD); akce řídí obchodník.
+- **Notifikace**: zvonkohra v hlavičce (plánování kroku, čekání na zákazníka, AI chyby).
+
+Viz `docs/superpowers/specs/2026-09-24-procesni-pipeline-design.md` (design) a `docs/superpowers/plans/2026-09-24-procesni-pipeline.md` (plán M1–M6).
+
 ### 2. Lokální Vývoj
 
 1. **Vytvořte virtuální prostředí:**
