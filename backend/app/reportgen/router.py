@@ -73,6 +73,9 @@ def _project_to_dict(p: Project):
         "description": p.description,
         "owner_id": p.owner_id,
         "share_code": p.share_code,
+        "type": p.type,
+        "status": p.status,
+        "tech": p.tech,
         "antelon_params": json.loads(p.antelon_params_json) if p.antelon_params_json else {},
         "fve_params": json.loads(p.fve_params_json) if p.fve_params_json else {},
         "created_at": p.created_at.isoformat() if p.created_at else None,
@@ -139,7 +142,7 @@ def register(data: RegisterIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     token = create_access_token({"sub": user.email, "role": user.role})
-    return {"access_token": token, "token_type": "bearer", "user": {"id": user.id, "email": user.email, "role": user.role}}
+    return {"access_token": token, "token_type": "bearer", "user": {"id": user.id, "email": user.email, "role": user.role, "roles": user.roles}}
 
 @router.post("/auth/login")
 def login(data: LoginIn, db: Session = Depends(get_db)):
@@ -148,11 +151,11 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(401, "Neplatné přihlášení")
     token = create_access_token({"sub": user.email, "role": user.role})
-    return {"access_token": token, "token_type": "bearer", "user": {"id": user.id, "email": user.email, "role": user.role}}
+    return {"access_token": token, "token_type": "bearer", "user": {"id": user.id, "email": user.email, "role": user.role, "roles": user.roles}}
 
 @router.get("/auth/me")
 def me(user: User = Depends(get_current_user)):
-    return {"id": user.id, "email": user.email, "role": user.role}
+    return {"id": user.id, "email": user.email, "role": user.role, "roles": user.roles}
 
 # ---------- Projects ----------
 @router.get("/projects")
@@ -667,18 +670,41 @@ def list_appliances(user: User = Depends(require_roles("admin")), db: Session = 
 @router.get("/admin/users")
 def list_users(user: User = Depends(require_roles("admin")), db: Session = Depends(get_db)):
     users = db.query(User).all()
-    return [{"id": u.id, "email": u.email, "role": u.role, "created_at": u.created_at.isoformat() if u.created_at else None} for u in users]
+    return [{"id": u.id, "email": u.email, "role": u.role, "roles": u.roles, "created_at": u.created_at.isoformat() if u.created_at else None} for u in users]
+
+def _role_val(role):
+    from .storage import ROLES
+    if role in ROLES:
+        return role
+    return None
 
 @router.put("/admin/users/{user_id}")
 def update_user_role(user_id: int, role: str = Form(...), user: User = Depends(require_roles("admin")), db: Session = Depends(get_db)):
-    if role not in ("admin", "antelon", "customer"):
+    role = _role_val(role)
+    if not role:
         raise HTTPException(400, "Neplatná role")
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
         raise HTTPException(404, "Uživatel nenalezen")
-    target.role = role
+    target.set_roles([role] + [r for r in target.roles if r != role])
     db.commit()
-    return {"status": "ok", "role": target.role}
+    return {"status": "ok", "role": role, "roles": target.roles}
+
+class RolesIn(BaseModel):
+    roles: list
+
+@router.put("/admin/users/{user_id}/roles")
+def update_user_roles(user_id: int, data: RolesIn, user: User = Depends(require_roles("admin")), db: Session = Depends(get_db)):
+    from .storage import ROLES
+    bad = [r for r in data.roles if r not in ROLES]
+    if bad:
+        raise HTTPException(400, f"Neplatné role: {bad}")
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(404, "Uživatel nenalezen")
+    target.set_roles(data.roles)
+    db.commit()
+    return {"status": "ok", "roles": target.roles}
 
 # ---------- Dispečink (M1) ----------
 from .pipeline_router import router as pipeline_router

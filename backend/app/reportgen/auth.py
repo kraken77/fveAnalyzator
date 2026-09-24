@@ -64,8 +64,10 @@ def get_current_user(
     return user
 
 def require_roles(*roles):
+    """Multi-role check: uživatel musí mít alespoň jednu z rolí (user.roles,
+    fallback na primární user.role — zpětná kompatibilita)."""
     def _checker(user: User = Depends(get_current_user)):
-        if user.role not in roles:
+        if not any(user.has_role(r) for r in roles):
             raise HTTPException(status_code=403, detail="Nedostatečná oprávnění")
         return user
     return _checker
