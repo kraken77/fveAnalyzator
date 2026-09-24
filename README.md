@@ -112,6 +112,26 @@ Viz `docs/superpowers/specs/2026-08-28-reportgen-design.md`.
 
     *(Poznámka: Pro plnou funkčnost musí běžet i backend, např. přes `uvicorn backend.main:app --reload`)*
 
+### 3. Nasazení na server (produkce)
+
+Aplikace běží na serveru **drakisa** (192.168.119.167) jako Docker Compose projekt `antelon-energy` v adresáři `/home/roman/apps/antelon-energy`. Veřejně dostupná na **https://fve.etikos.cz** (web na portu 3001 — port 3000 obsazuje Grafana), backend API na 8051.
+
+**Flow nasazení:**
+
+1. Lokálně: commit + `git push origin main`.
+2. Na serveru: `cd /home/roman/apps/antelon-energy && ./deploy.sh`
+3. `deploy.sh` automaticky:
+   - zálohuje produkční `data/reportgen.db` do `data/backups/`,
+   - stáhne nejnovější kód (`git pull --ff-only`),
+   - znovupostaví a restartuje kontejnery (`docker compose up -d --build`),
+   - ověří health backendu a webu.
+
+**Důležité:**
+
+- Produkční data (`reportgen.db`, `data/projects/`, `spot_market.db`) žijí pouze na disku serveru — **nejsou v gitu** a nesmí se přepsat lokální vývojovou verzí.
+- Citlivé hodnoty (hesla, `RG_JWT_SECRET`, `RG_PUBLIC_URL=https://fve.etikos.cz`) jsou v `.env` na serveru; v gitu je jen `.env.example`.
+- Legacy Streamlit frontend na serveru neběží (Exited) — aktivní klient je `frontend-web` (React).
+
 ## Integrace Dat (Spotové ceny OTE)
 
 Projekt obsahuje sadu skriptů pro správu dat z OTE-CR. Pro uživatele je připraven jediný sjednocující skript.

@@ -143,6 +143,7 @@ data/reportgen.db
 data/projects/
 data/*.db
 data/*.db-journal
+data/backups/
 frontend-web/node_modules/
 frontend-web/dist/
 frontend-web/.env
