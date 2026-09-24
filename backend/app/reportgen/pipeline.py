@@ -302,11 +302,17 @@ def _hook_elektro_done(db, project, ps, s, user, result):
     _notify_team(db, f"Otevřena větev revize — {project.name}", project)
 
 
+def _hook_ai_chain(db, project, ps, s, user, result):
+    from .ai_service import run_ai_chain
+    run_ai_chain(db, project, user)
+
+
 HOOKS = {
     "invoice_2500": _hook_invoice_2500,
     "sod_signed": _hook_sod_signed,
     "sop_signed": _hook_sop_signed,
     "elektro_done": _hook_elektro_done,
+    "ai_chain": _hook_ai_chain,
 }
 
 

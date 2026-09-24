@@ -1,6 +1,7 @@
 """Dispečink — API (M1.3.3 import, M2.5 workflow, notifikace)."""
 
 import os
+import json
 from datetime import datetime
 from typing import Optional
 
@@ -9,8 +10,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .auth import get_current_user, require_roles
-from .storage import (Notification, PipelineStep, PipelineTemplate, Project,
-                      ProjectStep, User, get_db)
+from .storage import (Notification, PipelineAiResult, PipelineStep,
+                      PipelineTemplate, Project, ProjectStep, User, get_db)
 
 router = APIRouter(tags=["dispecink"])
 
@@ -202,6 +203,62 @@ def step_admin(project_id: int, step_id: int, data: AdminIn,
                     assigned_user_id=data.assigned_user_id, to_status=data.to_status)
     db.commit()
     return {"status": ps.status, "id": ps.id}
+
+
+# ---------- AI kroky (M3.3) ----------
+
+class RunAiIn(BaseModel):
+    trigger: str = "manual"  # auto|manual
+
+
+@router.post("/projects/{project_id}/steps/{step_id}/run-ai")
+def step_run_ai(project_id: int, step_id: int, data: RunAiIn,
+                user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    ps = _get_project_step(db, project_id, step_id)
+    from .ai_service import run_ai
+    res = run_ai(db, p, ps, user, trigger=data.trigger)
+    db.commit()
+    db.refresh(res)
+    return {"id": res.id, "status": res.status, "kind": res.kind,
+            "project_id": project_id, "step_id": step_id}
+
+
+class ReviewAiIn(BaseModel):
+    result_id: int
+    approved: bool
+    note: Optional[str] = None
+
+
+@router.post("/projects/{project_id}/steps/{step_id}/review-ai")
+def step_review_ai(project_id: int, step_id: int, data: ReviewAiIn,
+                   user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    ps = _get_project_step(db, project_id, step_id)
+    from .ai_service import review_ai
+    res = review_ai(db, data.result_id, data.approved, user, note=data.note)
+    db.commit()
+    db.refresh(res)
+    db.refresh(ps)
+    return {"id": res.id, "status": res.status, "step_status": ps.status}
+
+
+@router.get("/projects/{project_id}/steps/{step_id}/ai-results")
+def ai_results(project_id: int, step_id: int, user: User = Depends(get_current_user),
+               db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    ps = _get_project_step(db, project_id, step_id)
+    rows = (db.query(PipelineAiResult)
+            .filter(PipelineAiResult.step_id == ps.id)
+            .order_by(PipelineAiResult.id.desc()).all())
+    return [{"id": r.id, "kind": r.kind, "status": r.status,
+             "input": json.loads(r.input_json) if r.input_json else None,
+             "output": json.loads(r.output_json) if r.output_json else None,
+             "pdf_version_id": r.pdf_version_id,
+             "created_by": r.created_by, "reviewed_by": r.reviewed_by,
+             "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
+             "created_at": r.created_at.isoformat() if r.created_at else None}
+            for r in rows]
 
 
 # ---------- Notifikace (M2.3) ----------

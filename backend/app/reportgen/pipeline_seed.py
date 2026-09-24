@@ -73,7 +73,7 @@ def _full_template_steps():
         condition=COND_STOP)
     add("sber_podkladu", "Sběr podkladů od zákazníka", "lead", est_admin=5)
     add("tech_posouzeni", "Technické posouzení na dálku", "lead", est_admin=10,
-        allowed=ALLOWED_DESIGN)
+        allowed=ALLOWED_DESIGN, auto_hook="ai_chain")
 
     # --- PRÍPRAVA ---
     add("navrh_fve", "Návrh velikosti FVE", "priprava", est_admin=10,
@@ -196,7 +196,7 @@ def _short_template_steps(zakazka_type):
         est_admin=0, auto_hook="invoice_2500", allowed=ALLOWED_SALES)
     add("sber_podkladu", "Sběr podkladů od zákazníka", "lead", est_admin=5)
     add("tech_posouzeni", "Technické posouzení na dálku", "lead", est_admin=10,
-        allowed=ALLOWED_DESIGN)
+        allowed=ALLOWED_DESIGN, auto_hook="ai_chain")
     add("nabidka_podrobna", "Vytvoření podrobnější nabídky", "priprava", est_admin=10,
         state_model="ai", allowed=ALLOWED_DESIGN)
     add("odeslani_nabidky", "Odeslání nabídky", "priprava", est_admin=10)
@@ -251,7 +251,7 @@ def _elektroprace_steps():
 
     add("lead_zaevidovani", "Zaevidování poptávky - LEAD, OP", "lead", est_admin=1)
     add("tech_posouzeni", "Technické posouzení na dálku", "lead", est_admin=10,
-        allowed=ALLOWED_DESIGN)
+        allowed=ALLOWED_DESIGN, auto_hook="ai_chain")
     add("nabidka_podrobna", "Vytvoření podrobnější nabídky", "priprava", est_admin=10,
         state_model="ai", allowed=ALLOWED_DESIGN)
     add("sod", "Podpis Smlouvy o dílo (SoD)", "smlouva", est_admin=10,
@@ -280,7 +280,7 @@ def _carport_steps():
 
     add("lead_zaevidovani", "Zaevidování poptávky - LEAD, OP", "lead", est_admin=1)
     add("tech_posouzeni", "Technické posouzení na dálku", "lead", est_admin=10,
-        allowed=ALLOWED_DESIGN)
+        allowed=ALLOWED_DESIGN, auto_hook="ai_chain")
     add("nabidka_podrobna", "Vytvoření podrobnější nabídky", "priprava", est_admin=10,
         state_model="ai", allowed=ALLOWED_DESIGN)
     add("sod", "Podpis Smlouvy o dílo (SoD)", "smlouva", est_admin=10,
