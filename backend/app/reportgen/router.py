@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .storage import get_db, User, Project, ProjectUser, ProjectFile, ProjectPhoto, PdfVersion, generate_share_code, init_db
-from .auth import hash_password, verify_password, create_access_token, get_current_user, get_current_user_optional, require_roles, can_access_project
+from .auth import hash_password, verify_password, create_access_token, get_current_user, get_current_user_optional, require_roles, can_access_project, is_principal, is_internal_user
 from .shelly_parser import parse_shelly_csv, merge_parsed_results, extract_consumption_totals
 from .antelon import antelon_analyze
 from .antelon_pdf import generate_antelon_pdf
@@ -86,17 +86,12 @@ def _ensure_project_access(project_id: int, user, db: Session):
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p:
         raise HTTPException(404, "Projekt nenalezen")
-    # admin/antelon can access all; customer only if owner or linked
+    # admin/antelon + interní role je možno vše; customer jen owner/link
     if user is None:
         raise HTTPException(401, "Neautorizováno")
-    if user.role in ("admin", "antelon"):
-        return p
-    if p.owner_id == user.id:
-        return p
-    link = db.query(ProjectUser).filter(ProjectUser.project_id == p.id, ProjectUser.user_id == user.id).first()
-    if link:
-        return p
-    raise HTTPException(403, "Bez přístupu k projektu")
+    if not can_access_project(user, p, db):
+        raise HTTPException(403, "Bez přístupu k projektu")
+    return p
 
 def _get_parsed_for_project(project_id: int, db: Session):
     files = db.query(ProjectFile).filter(ProjectFile.project_id == project_id).all()
@@ -141,7 +136,7 @@ def register(data: RegisterIn, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    token = create_access_token({"sub": user.email, "role": user.role})
+    token = create_access_token({"sub": user.email, "role": user.role, "roles": user.roles})
     return {"access_token": token, "token_type": "bearer", "user": {"id": user.id, "email": user.email, "role": user.role, "roles": user.roles}}
 
 @router.post("/auth/login")
@@ -150,7 +145,7 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(401, "Neplatné přihlášení")
-    token = create_access_token({"sub": user.email, "role": user.role})
+    token = create_access_token({"sub": user.email, "role": user.role, "roles": user.roles})
     return {"access_token": token, "token_type": "bearer", "user": {"id": user.id, "email": user.email, "role": user.role, "roles": user.roles}}
 
 @router.get("/auth/me")
@@ -160,7 +155,7 @@ def me(user: User = Depends(get_current_user)):
 # ---------- Projects ----------
 @router.get("/projects")
 def list_projects(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if user.role in ("admin", "antelon"):
+    if is_principal(user) or is_internal_user(user):
         projects = db.query(Project).order_by(Project.updated_at.desc()).all()
     else:
         # customer: owned + shared
@@ -179,7 +174,7 @@ def list_projects(user: User = Depends(get_current_user), db: Session = Depends(
 
 @router.post("/projects")
 def create_project(data: ProjectCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if user.role not in ("admin", "antelon"):
+    if not (user.has_role("admin") or user.has_role("antelon")):
         raise HTTPException(403, "Jen Antelon může vytvářet projekty")
     code = generate_share_code()
     # ensure unique
@@ -207,7 +202,7 @@ def get_project(project_id: int, user: User = Depends(get_current_user), db: Ses
 @router.put("/projects/{project_id}")
 def update_project(project_id: int, data: ProjectUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = _ensure_project_access(project_id, user, db)
-    if user.role not in ("admin", "antelon"):
+    if not (user.has_role("admin") or user.has_role("antelon")):
         raise HTTPException(403, "Jen Antelon může upravovat projekt")
     if data.name is not None:
         p.name = data.name
@@ -227,7 +222,7 @@ def update_project(project_id: int, data: ProjectUpdate, user: User = Depends(ge
 @router.delete("/projects/{project_id}")
 def delete_project(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = _ensure_project_access(project_id, user, db)
-    if user.role not in ("admin", "antelon"):
+    if not (user.has_role("admin") or user.has_role("antelon")):
         raise HTTPException(403, "Jen Antelon může mazat")
     db.delete(p)
     db.commit()
@@ -236,7 +231,7 @@ def delete_project(project_id: int, user: User = Depends(get_current_user), db: 
 @router.put("/projects/{project_id}/params")
 def update_params(project_id: int, data: ParamsUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = _ensure_project_access(project_id, user, db)
-    if user.role not in ("admin", "antelon"):
+    if not (user.has_role("admin") or user.has_role("antelon")):
         raise HTTPException(403, "Jen Antelon může měnit parametry")
     if data.antelon_params is not None:
         p.antelon_params_json = json.dumps(data.antelon_params)
@@ -251,7 +246,7 @@ def update_params(project_id: int, data: ParamsUpdate, user: User = Depends(get_
 @router.post("/projects/{project_id}/files")
 async def upload_files(project_id: int, files: List[UploadFile] = File(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = _ensure_project_access(project_id, user, db)
-    if user.role not in ("admin", "antelon"):
+    if not (user.has_role("admin") or user.has_role("antelon")):
         raise HTTPException(403, "Jen Antelon může nahrávat data")
     saved = []
     for f in files:
@@ -293,7 +288,7 @@ def list_files(project_id: int, user: User = Depends(get_current_user), db: Sess
 @router.delete("/projects/{project_id}/files/{file_id}")
 def delete_file(project_id: int, file_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     _ensure_project_access(project_id, user, db)
-    if user.role not in ("admin", "antelon"):
+    if not (user.has_role("admin") or user.has_role("antelon")):
         raise HTTPException(403, "Jen Antelon může mazat soubory")
     pf = db.query(ProjectFile).filter(ProjectFile.id == file_id, ProjectFile.project_id == project_id).first()
     if not pf:
@@ -353,7 +348,7 @@ def project_data(project_id: int, user: User = Depends(get_current_user), db: Se
 @router.post("/projects/{project_id}/share")
 def create_share(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = _ensure_project_access(project_id, user, db)
-    if user.role not in ("admin", "antelon"):
+    if not (user.has_role("admin") or user.has_role("antelon")):
         raise HTTPException(403, "Jen Antelon může sdílet")
     # regenerate if needed? keep existing
     host = os.environ.get("RG_PUBLIC_URL", "http://localhost:3000")
@@ -396,10 +391,8 @@ def public_preview(code: str, db: Session = Depends(get_db), user: Optional[User
         "sections": [],
     }
     if user:
-        link = db.query(ProjectUser).filter(ProjectUser.project_id == p.id, ProjectUser.user_id == user.id).first()
-        teaser["is_linked"] = (user.role in ("admin", "antelon")) or (p.owner_id == user.id) or (link is not None)
-        if user.role in ("admin", "antelon"):
-            teaser["is_linked"] = True
+        teaser["is_linked"] = is_principal(user) or is_internal_user(user) or (p.owner_id == user.id) or \
+            (db.query(ProjectUser).filter(ProjectUser.project_id == p.id, ProjectUser.user_id == user.id).first() is not None)
     # KPI teaser: always visible basic
     if parsed:
         try:
@@ -413,9 +406,10 @@ def public_preview(code: str, db: Session = Depends(get_db), user: Optional[User
                 vis = visibility.get(sid, default)
                 # For teaser view, decide blur
                 should_blur = False
-                if vis == "internal" and not (user and user.role in ("admin", "antelon")):
+                full_viewer = user and (is_principal(user) or is_internal_user(user))
+                if vis == "internal" and not full_viewer:
                     should_blur = True
-                elif vis == "teaser" and not teaser["is_linked"] and not (user and user.role in ("admin", "antelon")):
+                elif vis == "teaser" and not teaser["is_linked"] and not full_viewer:
                     should_blur = True
                 teaser["sections"].append({"id": sid, "visibility": vis, "blur": should_blur})
         except Exception as e:
@@ -434,7 +428,7 @@ def list_photos(project_id: int, user: User = Depends(get_current_user), db: Ses
 @router.post("/projects/{project_id}/photos")
 async def upload_photo(project_id: int, file: UploadFile = File(...), caption: str = Form(""), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = _ensure_project_access(project_id, user, db)
-    if user.role not in ("admin", "antelon"):
+    if not (user.has_role("admin") or user.has_role("antelon")):
         raise HTTPException(403, "Jen Antelon může nahrávat fotky")
     content = await file.read()
     if len(content) > 15 * 1024 * 1024:
@@ -461,7 +455,7 @@ async def upload_photo(project_id: int, file: UploadFile = File(...), caption: s
 @router.delete("/projects/{project_id}/photos/{photo_id}")
 def delete_photo(project_id: int, photo_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     _ensure_project_access(project_id, user, db)
-    if user.role not in ("admin", "antelon"):
+    if not (user.has_role("admin") or user.has_role("antelon")):
         raise HTTPException(403, "Jen Antelon")
     ph = db.query(ProjectPhoto).filter(ProjectPhoto.id == photo_id, ProjectPhoto.project_id == project_id).first()
     if not ph:
@@ -479,7 +473,7 @@ def delete_photo(project_id: int, photo_id: int, user: User = Depends(get_curren
 @router.post("/projects/{project_id}/generate")
 def generate_pdf(project_id: int, data: GenerateIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = _ensure_project_access(project_id, user, db)
-    if user.role not in ("admin", "antelon"):
+    if not (user.has_role("admin") or user.has_role("antelon")):
         raise HTTPException(403, "Jen Antelon může generovat PDF")
     template = data.template
     if template not in ("antelon", "energy", "economic", "ote"):
@@ -596,7 +590,7 @@ def download_pdf(project_id: int, pdf_id: int, mode: str = Query("full"), user: 
     is_anonymous = user is None
     is_linked = False
     if user:
-        if user.role in ("admin", "antelon"):
+        if is_principal(user) or is_internal_user(user):
             is_linked = True
         elif project.owner_id == user.id:
             is_linked = True

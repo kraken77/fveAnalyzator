@@ -12,10 +12,13 @@ type StatusColor = Record<string, string>;
 
 const STATUS_COLORS: StatusColor = {
   done: "bg-emerald-500",
+  signed: "bg-emerald-500",
+  sent: "bg-amber-300",
   in_progress: "bg-amber-400",
   planned: "bg-sky-400",
   cancelled: "bg-slate-300",
   skipped: "bg-slate-200 ring-1 ring-inset ring-slate-300",
+  not_applicable: "bg-slate-200",
   not_started: "bg-white ring-1 ring-inset ring-slate-300",
 };
 
@@ -58,6 +61,7 @@ export default function Dispecink() {
   const [fType, setFType] = useState("");
   const [fStatus, setFStatus] = useState("");
   const [fQuery, setFQuery] = useState("");
+  const [fPerson, setFPerson] = useState("");
 
   const [busyImport, setBusyImport] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -80,7 +84,9 @@ export default function Dispecink() {
           results.push({
             project: p,
             steps,
-            doneCount: steps.filter((s) => s.status === "done").length,
+            doneCount: steps.filter((s) =>
+            ["done", "signed", "skipped", "not_applicable"].includes(s.status),
+          ).length,
             total: steps.length,
           });
         } catch {
@@ -112,6 +118,14 @@ export default function Dispecink() {
     return rows.filter((r) => {
       if (fType && (r.project.type || "") !== fType) return false;
       if (fStatus && (r.project.status || "") !== fStatus) return false;
+      if (fPerson) {
+        const active = r.steps.some(
+          (s) =>
+            String(s.assigned_user_id ?? "") === fPerson &&
+            (s.status === "planned" || s.status === "in_progress"),
+        );
+        if (!active) return false;
+      }
       if (fQuery) {
         const q = fQuery.toLowerCase();
         const hay = `${r.project.name} ${r.project.customer_name ?? ""} ${r.project.share_code ?? ""}`.toLowerCase();
@@ -119,7 +133,21 @@ export default function Dispecink() {
       }
       return true;
     });
-  }, [rows, fType, fStatus, fQuery]);
+  }, [rows, fType, fStatus, fQuery, fPerson]);
+
+  const people = useMemo(() => {
+    const m = new Map<string, { id: string; name: string }>();
+    rows.forEach((r) =>
+      r.steps.forEach((s) => {
+        if (!s.assigned_user_id) return;
+        const id = String(s.assigned_user_id);
+        if (!m.has(id)) {
+          m.set(id, { id, name: s.assigned_name || `Uživatel #${id}` });
+        }
+      }),
+    );
+    return Array.from(m.values());
+  }, [rows]);
 
   const types = useMemo(() => {
     const s = new Set(projects.map((p) => p.type || "").filter(Boolean));
@@ -222,6 +250,18 @@ export default function Dispecink() {
           <option value="active">active</option>
           <option value="cancelled">cancelled</option>
           <option value="done">done</option>
+        </select>
+        <select
+          value={fPerson}
+          onChange={(e) => setFPerson(e.target.value)}
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+        >
+          <option value="">Všichni uživatelé</option>
+          {people.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
         </select>
       </div>
 

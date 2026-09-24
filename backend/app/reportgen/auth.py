@@ -72,10 +72,27 @@ def require_roles(*roles):
         return user
     return _checker
 
+def is_internal_user(user: Optional[User]) -> bool:
+    """Interní role (ne „customer“) — zaměstnanci vidí všechny zakázky v dispečinku."""
+    if user is None:
+        return False
+    roles = list(user.roles or [])
+    if not roles and user.role:
+        roles = [user.role]
+    return any(r != "customer" for r in roles)
+
+
+def is_principal(user: Optional[User]) -> bool:
+    """Vedení: admin ⊃ antelon (multi-role bezpečné)."""
+    return user is not None and (user.has_role("admin") or user.has_role("antelon"))
+
+
 def can_access_project(user: Optional[User], project, db: Session) -> bool:
     if user is None:
         return False
-    if user.role in ("admin", "antelon"):
+    if is_principal(user):
+        return True
+    if is_internal_user(user):
         return True
     if project.owner_id == user.id:
         return True

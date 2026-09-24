@@ -55,6 +55,7 @@ export interface PipelineStep {
   status: PipelineStatus;
   plan_date?: string | null;
   assigned_user_id?: number | string | null;
+  assigned_name?: string | null;
   note?: string | null;
   real_admin_minutes?: number;
   real_work_minutes?: number;

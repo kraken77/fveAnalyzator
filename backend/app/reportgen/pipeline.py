@@ -234,8 +234,8 @@ def _check_assign_authority(user):
 
 # ---------- notifikace ----------
 
-def notify(db, user_id, text, project_id=None):
-    db.add(Notification(user_id=user_id, project_id=project_id, text=text))
+def notify(db, user_id, text, project_id=None, step_id=None):
+    db.add(Notification(user_id=user_id, project_id=project_id, step_id=step_id, text=text))
 
 
 def _team_user_ids(db, project):
@@ -252,9 +252,9 @@ def _team_user_ids(db, project):
     return ids
 
 
-def _notify_team(db, text, project):
+def _notify_team(db, text, project, step_id=None):
     for uid in _team_user_ids(db, project):
-        notify(db, uid, text, project.id)
+        notify(db, uid, text, project.id, step_id=step_id)
 
 
 # ---------- hooky (M2.4) ----------
@@ -325,7 +325,7 @@ def _run_hooks(db, project, ps, s, user, result=None):
 
 
 def _notify_waiting_for_customer(db, project, ps, s):
-    _notify_team(db, f"Krok „{s.name}“ čeká na zákazníka — {project.name}", project)
+    _notify_team(db, f"Krok „{s.name}“ čeká na zákazníka — {project.name}", project, step_id=ps.id)
 
 
 # ---------- hlavní přechod ----------
@@ -349,6 +349,16 @@ def can_transition(db, project_step: ProjectStep, action: str, user: User,
     roles = _allowed_roles_of(s)
     if roles and not any(user.has_role(r) for r in roles):
         return False, [], "Nemáte oprávnění pro tento krok"
+
+    # AI kroky: complete je přípustný, jen pokud nečeká neschválený draft
+    # (tzn. po approve/reject, nebo pokud AI nikdy neběželo = manuální vyřešení).
+    if s.state_model == "ai" and action == "complete":
+        from .storage import PipelineAiResult
+        pending = db.query(PipelineAiResult).filter(
+            PipelineAiResult.step_id == project_step.id,
+            PipelineAiResult.status == "draft").first()
+        if pending:
+            return False, [], "AI výstup čeká na schválení (Schválit/Zamítnout v detailu kroku)"
 
     if action in ("assign",) and not any(user.has_role(r) for r in ("admin", "antelon")):
         return False, [], "Přiřazení uživatele umí jen admin/antelon"
@@ -420,7 +430,7 @@ def transition(db, project: Project, project_step: ProjectStep, action: str,
             text = f"Krok „{s.name}“ naplánován"
             if plan_date:
                 text += f" na {plan_date.strftime('%d.%m.%Y')}"
-            notify(db, project_step.assigned_user_id, text, project.id)
+            notify(db, project_step.assigned_user_id, text, project.id, step_id=project_step.id)
     elif action == "sent":
         _notify_waiting_for_customer(db, project, project_step, s)
 
@@ -502,6 +512,11 @@ def get_pipeline_view(db, project_id: int, user: User = None):
                     "active": template.active} if template else None
 
     items = _ordered_items(db, project_id, visible_only=False)
+    assigned_ids = {ps.assigned_user_id for ps, s in items if ps.assigned_user_id}
+    users_by_id = {}
+    if assigned_ids:
+        for u in db.query(User).filter(User.id.in_(assigned_ids)).all():
+            users_by_id[u.id] = u.email
     steps = []
     for ps, s in items:
         hidden = not _condition_met(db, s, project)
@@ -515,6 +530,7 @@ def get_pipeline_view(db, project_id: int, user: User = None):
             "status": ps.status,
             "plan_date": ps.plan_date.isoformat() if ps.plan_date else None,
             "assigned_user_id": ps.assigned_user_id,
+            "assigned_name": users_by_id.get(ps.assigned_user_id) or None,
             "note": ps.note,
             "real_admin_minutes": ps.real_admin_minutes,
             "real_work_minutes": ps.real_work_minutes,

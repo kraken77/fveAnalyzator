@@ -238,6 +238,7 @@ class Notification(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    step_id = Column(Integer, ForeignKey("project_steps.id"), nullable=True)
     text = Column(String(500), nullable=False)
     read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -303,6 +304,11 @@ def _migrate(engine):
                 conn.execute(text("ALTER TABLE projects ADD COLUMN tech VARCHAR(255)"))
             conn.execute(text("UPDATE projects SET type = 'ostatni' WHERE type IS NULL OR type = ''"))
             conn.execute(text("UPDATE projects SET status = 'lead' WHERE status IS NULL OR status = ''"))
+
+        if "notifications" in tables:
+            cols = columns_of("notifications")
+            if "step_id" not in cols:
+                conn.execute(text("ALTER TABLE notifications ADD COLUMN step_id INTEGER"))
 
         conn.commit()
     finally:

@@ -45,6 +45,8 @@ Role v systému:
 | `electrician` / `roofer` / `inspector` | montér, pokrývač, revizní technik | tabule, pipeline, časové výkazy, montážní kroky |
 | `customer` | zákazník | jen své projekty (přes sdílecí odkaz / po připojení) |
 
+**Viditelnost zakázek:** všechny **interní role** (cokoli jiného než `customer`) vidí v dispečinku **všechny zakázky** společnosti — otevření detailu pipeline není omezeno projektovou vazbou. Zákazník (`customer`) vidí a otevírá **jen své** projekty (kde je vlastníkem nebo je propojen přes sdílecí odkaz); cizí zakázky dostanou 403. Samotné **akce** na krocích zůstávají omezené rolí daného kroku (`allowed_roles`) — např. montážní krok může zahájit/dokončit jen `electrician`, obchodní krok zase `sales`.
+
 **Multi-role a přepínač rolí:** uživatel může mít více rolí najednou. V hlavičce je přepínač **„Role:"** — vyberte roli, ve které právě pracujete (mení se podle ní i nabídka a oprávnění akcí).
 
 > Příklad: montér, který občas zastupuje skladníka, má role `electrician` + `warehouse`; přepnutím na `warehouse` uvidí menu Materiály s výdeji.
@@ -56,7 +58,7 @@ Role v systému:
 ### 3.1 Tabule zakázek (`/dispecink`)
 
 - Přehled všech zakázek: ID, název, zákazník, typ, stav, **proužek pipeline** (čtverečky kroků s barvou stavu) a podíl hotových kroků.
-- **Filtry**: hledání textu, typ zakázky, stav zakázky.
+- **Filtry**: hledání textu, typ zakázky, stav zakázky a **odpovědná osoba** (zakázky, kde má daný uživatel krok v plánu/práci).
 - Klik na název/zakázku → `Pipeline detail`.
 - Legenda barev pod tabulkou: `done`=zelená, `in_progress`=žlutá, `planned`=modrá, `not_started`=bílá, `cancelled`/`skipped`=šedá.
 

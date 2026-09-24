@@ -22,16 +22,10 @@ def _ensure_project_access(project_id: int, user: User, db: Session) -> Project:
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p:
         raise HTTPException(404, "Projekt nenalezen")
-    if user.has_role("admin") or user.has_role("antelon"):
-        return p
-    from .storage import ProjectUser
-    if p.owner_id == user.id:
-        return p
-    link = db.query(ProjectUser).filter(
-        ProjectUser.project_id == p.id, ProjectUser.user_id == user.id).first()
-    if link:
-        return p
-    raise HTTPException(403, "Bez přístupu k projektu")
+    from .auth import can_access_project
+    if not can_access_project(user, p, db):
+        raise HTTPException(403, "Bez přístupu k projektu")
+    return p
 
 
 def _get_project_step(db, project_id, step_id) -> ProjectStep:
@@ -198,7 +192,7 @@ def step_admin(project_id: int, step_id: int, data: AdminIn,
     ps = _get_project_step(db, project_id, step_id)
 
     if data.action == "remove_step":
-        db.query(Notification).filter(Notification.project_id == project_id).delete()
+        db.query(Notification).filter(Notification.step_id == ps.id).delete()
         from .storage import StepEvent
         db.query(StepEvent).filter(StepEvent.step_id == ps.id).delete()
         db.delete(ps)
@@ -264,6 +258,10 @@ def step_review_ai(project_id: int, step_id: int, data: ReviewAiIn,
                    user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = _ensure_project_access(project_id, user, db)
     ps = _get_project_step(db, project_id, step_id)
+    # IDOR: výsledek musí patřit tomuto kroku tohoto projektu
+    res = db.query(PipelineAiResult).filter(PipelineAiResult.id == data.result_id).first()
+    if res is None or res.step_id != ps.id or res.project_id != project_id:
+        raise HTTPException(404, "Výsledek AI k tomuto kroku nenalezen")
     from .ai_service import review_ai
     res = review_ai(db, data.result_id, data.approved, user, note=data.note)
     db.commit()

@@ -89,11 +89,11 @@ def _full_template_steps():
     add("vizualizace", "Příprava vizualizace", "priprava", est_admin=0,
         state_model="ai", allowed=ALLOWED_DESIGN)
     add("odeslani_nabidky", "Odeslání nabídky", "priprava", est_admin=10)
-    add("followup_1", "První follow-up (po 3 dnech)", "priprava", est_admin=10)
-    add("konzultace_navratnost", "Konzultace návratnosti", "priprava", est_admin=5)
-    add("konzultace_znacky", "Konzultace značek komponentů", "priprava", est_admin=5)
-    add("planovani_prohlidky", "Plánování osobní prohlídky", "priprava", est_admin=5)
-    add("osobni_schuzka", "Osobní schůzka na místě", "priprava", est_admin=120)
+    add("followup_1", "První follow-up (po 3 dnech)", "sledovani", est_admin=10)
+    add("konzultace_navratnost", "Konzultace návratnosti", "sledovani", est_admin=5)
+    add("konzultace_znacky", "Konzultace značek komponentů", "sledovani", est_admin=5)
+    add("planovani_prohlidky", "Plánování osobní prohlídky", "sledovani", est_admin=5)
+    add("osobni_schuzka", "Osobní schůzka na místě", "sledovani", est_admin=120)
     add("statika_strechy", "Kontrola statiky střechy", "priprava", est_admin=5,
         allowed=ALLOWED_DESIGN)
     add("trasovani_kabelaze", "Trasování kabeláže", "priprava", est_admin=10,
@@ -112,18 +112,18 @@ def _full_template_steps():
         state_model="contract", auto_hook="sod_signed", allowed=ALLOWED_SALES)
     add("plna_moc", "Podpis plná moc pro Distributora (ČEZ,PRE)", "smlouva", est_admin=10,
         state_model="contract", allowed=ALLOWED_SALES)
-    add("zalohova_faktura", "Vystavení zálohové faktury", "smlouva", est_admin=5,
+    add("zalohova_faktura", "Vystavení zálohové faktury", "finance", est_admin=5,
         parallel_group="smlouva_after", allowed=ALLOWED_SALES)
-    add("kontrola_zalohy", "Kontrola připsání zálohy", "smlouva", est_admin=5,
+    add("kontrola_zalohy", "Kontrola připsání zálohy", "finance", est_admin=5,
         parallel_group="smlouva_after", allowed=ALLOWED_SALES)
-    add("sop", "Žádost o připojení (Smlouva) SOP", "smlouva", est_admin=20,
+    add("sop", "Žádost o připojení (Smlouva) SOP", "pripojeni", est_admin=20,
         state_model="contract", auto_hook="sop_signed", parallel_group="smlouva_after",
         allowed=ALLOWED_CONNECTION)
-    add("sledovani_vykonu", "Sledování schválení rezervovaného výkonu", "smlouva", est_admin=20,
+    add("sledovani_vykonu", "Sledování schválení rezervovaného výkonu", "pripojeni", est_admin=20,
         allowed=ALLOWED_CONNECTION)
-    add("registrace_nzu", "Podání registrace do NZÚ", "smlouva", est_admin=20,
+    add("registrace_nzu", "Podání registrace do NZÚ", "dotace", est_admin=20,
         allowed=ALLOWED_SUBSIDY, condition=COND_DOTACE)
-    add("administrace_pujcky", "Administrace bezúročné půjčky", "smlouva", est_admin=5,
+    add("administrace_pujcky", "Administrace bezúročné půjčky", "dotace", est_admin=5,
         allowed=ALLOWED_SUBSIDY, condition=COND_PUJCKA)
 
     # --- REALIZACE ---
@@ -137,7 +137,7 @@ def _full_template_steps():
     add("stavba_montaz", "Stavební a střešní montáž", "realizace", est_admin=0,
         est_work=480, work_role="roofer", allowed=ALLOWED_ROOFER)
     add("elektro_montaz", "Elektro-montáž komponentů", "realizace", est_admin=2,
-        est_work=480, work_role="electrician", auto_hook="elektro_done", allowed=ALLOWED_EL)
+        est_work=360, work_role="electrician", auto_hook="elektro_done", allowed=ALLOWED_EL)
     add("propojeni_test", "Propojení a ostrovní test", "realizace", est_admin=0,
         est_work=120, work_role="electrician", allowed=ALLOWED_EL)
 
@@ -149,32 +149,32 @@ def _full_template_steps():
 
     # --- REVIZE ---
     add("mereni_revize", "Měření a revize systému", "revize", est_admin=0,
-        est_work=120, work_role="electrician", allowed=ALLOWED_EL,
+        est_work=60, work_role="electrician", allowed=ALLOWED_EL,
         condition={"requires_step": ["elektro_montaz"]})
     add("podklady_revize", "Zaslání podkladů pro revizní zprávu", "revize", est_admin=0,
         allowed=ALLOWED_EL)
     add("revizni_zprava", "Vystavení Výchozí revizní zprávy (Revize FVE)", "revize", est_admin=5,
-        est_work=120, work_role="inspector", allowed=ALLOWED_INSPECTOR,
+        work_role="inspector", allowed=ALLOWED_INSPECTOR,
         condition={"requires_step": ["mereni_revize"]})
 
     # --- PŘETOKY ---
     add("utp", "Žádost o umožnění ÚTP", "pretoky", est_admin=10,
         allowed=ALLOWED_CONNECTION, condition=COND_SOP)
     add("vymena_elektromeru", "Výměna elektroměru", "pretoky", est_admin=0,
-        est_work=60, work_role="electrician", allowed=ALLOWED_EL, condition=COND_SOP)
+        allowed=ALLOWED_EL, condition=COND_SOP)
     add("prevzeti_odchylky", "Získání odběratele na přetoky", "pretoky", est_admin=0,
-        est_work=60, work_role="electrician", allowed=ALLOWED_CONNECTION, condition=COND_SOP)
+        allowed=ALLOWED_CONNECTION, condition=COND_SOP)
     add("kontrola_prevodni_smlouvy", "Kontrola smlouvy na přetoky", "pretoky", est_admin=5,
         allowed=ALLOWED_CONNECTION, condition=COND_SOP)
     add("povoleni_pretoku", "Povolení přetoků na střídači", "pretoky", est_admin=5,
-        est_work=60, work_role="electrician", allowed=ALLOWED_EL, condition=COND_SOP)
+        allowed=ALLOWED_EL, condition=COND_SOP)
     add("sdileni_komunita", "Nastavení sdílení v komunitě", "pretoky", est_admin=5,
         state_model="contract", allowed=ALLOWED_CONNECTION, condition=COND_SOP)
 
     # --- FINÁL ---
     add("konecna_faktura", "Vystavení konečné faktury", "final", est_admin=10,
         allowed=ALLOWED_SALES)
-    add("dolozeni_sfzp", "Doložení realizace na SFŽP", "final", est_admin=10,
+    add("dolozeni_sfzp", "Doložení realizace na SFŽP", "dotace", est_admin=10,
         allowed=ALLOWED_SUBSIDY, condition=COND_DOTACE)
 
     return steps

@@ -65,8 +65,16 @@ const ACTION_COLOR: Record<string, string> = {
 const PHASE_LABEL: Record<string, string> = {
   lead: "Lead",
   priprava: "Příprava",
+  sledovani: "Sledování",
   smlouva: "Smlouva",
+  finance: "Finance",
+  pripojeni: "Připojení",
+  dotace: "Dotace & půjčka",
   realizace: "Realizace",
+  predani: "Předání",
+  revize: "Revize",
+  pretoky: "Přetoky",
+  final: "Finální",
   servis: "Servis & správa",
 };
 
@@ -392,7 +400,7 @@ export default function PipelineDetail() {
       {active === "pipeline" && (
         <div className="space-y-5">
           <div className="flex items-center gap-4 text-xs text-slateMuted">
-            <span>Hotovo: {view.steps.filter((s) => s.status === "done").length}/{readySteps.length}</span>
+            <span>Hotovo: {view.steps.filter((s) => ["done", "signed", "skipped", "not_applicable"].includes(s.status)).length}/{readySteps.length}</span>
             <Link to={`/projects/${view.project.id}/materialy`} className="btn-secondary text-xs px-3 py-1.5">
               Materiály projektu →
             </Link>
