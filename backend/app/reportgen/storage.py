@@ -2,7 +2,7 @@ import os
 import json
 import secrets
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Text, Float, DateTime, ForeignKey, Boolean, UniqueConstraint
+from sqlalchemy import create_engine, Column, Integer, String, Text, Float, DateTime, Date, ForeignKey, Boolean, UniqueConstraint, text
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 Base = declarative_base()
@@ -16,13 +16,35 @@ if not os.path.exists(os.path.dirname(DB_PATH)):
 
 # Ensure directory exists lazily in init_db
 
+# Registrované role (číselník). users.role = primární role (backward compat),
+# users.roles_json = JSON pole rolí; nový kód používá User.roles.
+ROLES = ["admin", "antelon", "sales", "designer", "warehouse", "buyer",
+         "subsidy", "connection", "roofer", "electrician", "inspector", "customer"]
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    role = Column(String(20), nullable=False, default="customer")  # admin, antelon, customer
+    role = Column(String(20), nullable=False, default="customer")  # primární role (backward compat)
+    roles_json = Column(Text, nullable=True)  # JSON pole rolí
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    @property
+    def roles(self) -> list:
+        try:
+            return json.loads(self.roles_json) if self.roles_json else [self.role]
+        except Exception:
+            return [self.role]
+
+    def has_role(self, role: str) -> bool:
+        return role in self.roles
+
+    def set_roles(self, roles: list):
+        if not roles:
+            roles = ["customer"]
+        self.roles_json = json.dumps(list(dict.fromkeys(roles)))
+        self.role = roles[0]  # primární role pro zpětnou kompatibilitu
 
 class Project(Base):
     __tablename__ = "projects"
@@ -34,6 +56,9 @@ class Project(Base):
     share_code = Column(String(16), unique=True, nullable=False, index=True)
     antelon_params_json = Column(Text, nullable=True)  # JSON string
     fve_params_json = Column(Text, nullable=True)
+    type = Column(String(30), nullable=False, default="ostatni")  # zakazka typ (rd, byt, ...)
+    status = Column(String(20), nullable=False, default="lead")   # lead|active|done|cancelled
+    tech = Column(String(255), nullable=True)                     # technologie (string z Excelu)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -74,6 +99,149 @@ class PdfVersion(Base):
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+# ---------- Pipeline (Dispečink) tabulky (M1) ----------
+
+class PipelineTemplate(Base):
+    __tablename__ = "pipeline_templates"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(30), unique=True, nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    zakazka_type = Column(String(30), nullable=False)
+    version = Column(Integer, default=1)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class PipelineStep(Base):
+    __tablename__ = "pipeline_steps"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    template_id = Column(Integer, ForeignKey("pipeline_templates.id", ondelete="CASCADE"),
+                         nullable=False, index=True)
+    code = Column(String(50), nullable=False)
+    name = Column(String(200), nullable=False)
+    phase = Column(String(50), nullable=True)
+    order = Column(Integer, nullable=False, default=0)
+    est_admin_minutes = Column(Integer, default=0)
+    est_work_minutes = Column(Integer, default=0)
+    admin_rate_role = Column(String(30), default="sales")
+    work_rate_role = Column(String(30), default="electrician")
+    state_model = Column(String(20), default="simple")  # simple | contract | ai | material
+    allowed_roles_json = Column(Text, nullable=True)
+    condition_json = Column(Text, nullable=True)
+    auto_hook = Column(String(50), nullable=True)
+    parallel_group = Column(String(50), nullable=True)
+
+class ProjectPipeline(Base):
+    __tablename__ = "project_pipeline"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), unique=True, nullable=False)
+    template_id = Column(Integer, ForeignKey("pipeline_templates.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class ProjectStep(Base):
+    __tablename__ = "project_steps"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    step_id = Column(Integer, ForeignKey("pipeline_steps.id"), nullable=False)
+    status = Column(String(20), default="not_started")  # not_started|planned|in_progress|done|skipped|not_applicable|cancelled
+    plan_date = Column(DateTime, nullable=True)
+    assigned_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    note = Column(Text, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    done_at = Column(DateTime, nullable=True)
+    real_admin_minutes = Column(Integer, default=0)
+    real_work_minutes = Column(Integer, default=0)
+    __table_args__ = (UniqueConstraint("project_id", "step_id", name="uq_project_step"),)
+
+class StepEvent(Base):
+    __tablename__ = "step_events"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    step_id = Column(Integer, ForeignKey("project_steps.id"), nullable=False)
+    action = Column(String(50), nullable=False)
+    from_status = Column(String(20), nullable=True)
+    to_status = Column(String(20), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    at = Column(DateTime, default=datetime.utcnow)
+    note = Column(Text, nullable=True)
+
+class PipelineAiResult(Base):
+    __tablename__ = "pipeline_ai_results"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    step_id = Column(Integer, ForeignKey("project_steps.id"), nullable=False)
+    kind = Column(String(50), nullable=False)
+    input_json = Column(Text, nullable=True)
+    output_json = Column(Text, nullable=True)
+    pdf_version_id = Column(Integer, ForeignKey("pdf_versions.id"), nullable=True)
+    status = Column(String(20), default="draft")  # draft|approved|rejected
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Material(Base):
+    __tablename__ = "materials"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(50), unique=True, nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    unit = Column(String(10), default="ks")
+    price = Column(Float, default=0)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class ProjectMaterial(Base):
+    __tablename__ = "project_materials"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    material_id = Column(Integer, ForeignKey("materials.id"), nullable=False)
+    price_snapshot = Column(Float, default=0)
+    qty_planned = Column(Float, default=0)
+    qty_actual = Column(Float, default=0)
+    lane = Column(String(20), default="plan")  # plan|order|issue|actual
+    step_id = Column(Integer, ForeignKey("project_steps.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class TimeEntry(Base):
+    __tablename__ = "time_entries"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    step_id = Column(Integer, ForeignKey("project_steps.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    minutes = Column(Integer, nullable=False, default=0)
+    work_date = Column(Date, nullable=True)
+    kind = Column(String(10), default="admin")  # admin|work
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class RateCard(Base):
+    __tablename__ = "rate_cards"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    role = Column(String(30), nullable=False)
+    kind = Column(String(10), default="admin")  # admin|work
+    rate_czk_h = Column(Float, default=500)
+    active = Column(Boolean, default=True)
+
+class InvoiceItem(Base):
+    __tablename__ = "invoice_items"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    step_id = Column(Integer, ForeignKey("project_steps.id"), nullable=True)
+    doc_type = Column(String(30), nullable=False)  # posouzeni|zaloha|final|final_discount
+    doc_number = Column(String(30), nullable=True)
+    description = Column(String(255), nullable=True)
+    amount_czk = Column(Float, default=0)
+    status = Column(String(20), default="draft")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    text = Column(String(500), nullable=False)
+    read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 _engine = None
 _SessionLocal = None
 
@@ -99,8 +267,65 @@ def get_session_factory(db_path=None):
         _SessionLocal = factory
     return factory
 
+def _migrate(engine):
+    """Migrace původní produkční DB (SQLite) bez ztráty dat.
+
+    Přidá chybějící sloupce na users/projects a provede backfill.
+    Nové tabulky vytvoří Base.metadata.create_all (voláno z init_db).
+    Je idempotentní — spouští se při každém startu.
+    """
+    conn = engine.connect()
+    try:
+        tables = {r[0] for r in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()}
+
+        def columns_of(tbl):
+            return {r[1] for r in conn.execute(text(f"PRAGMA table_info({tbl})")).fetchall()}
+
+        if "users" in tables:
+            cols = columns_of("users")
+            if "roles_json" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN roles_json TEXT"))
+            # backfill roles_json z primární role (single-element pole)
+            conn.execute(text("UPDATE users SET roles_json = '[\"' || role || '\"]' WHERE roles_json IS NULL"))
+
+        if "projects" in tables:
+            cols = columns_of("projects")
+            if "type" not in cols:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN type VARCHAR(30)"))
+            if "status" not in cols:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN status VARCHAR(20)"))
+            if "tech" not in cols:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN tech VARCHAR(255)"))
+            conn.execute(text("UPDATE projects SET type = 'ostatni' WHERE type IS NULL OR type = ''"))
+            conn.execute(text("UPDATE projects SET status = 'lead' WHERE status IS NULL OR status = ''"))
+
+        conn.commit()
+    finally:
+        conn.close()
+
+
+RATE_CARD_SEED = [
+    # admin sazby (Kč/h) — pro kancelářské role
+    *[{"role": r, "kind": "admin", "rate_czk_h": 500} for r in
+      ("sales", "designer", "buyer", "subsidy", "connection", "warehouse")],
+    # práce (montáž/revize) — placeholder, kalibruje se
+    {"role": "roofer", "kind": "work", "rate_czk_h": 450},
+    {"role": "electrician", "kind": "work", "rate_czk_h": 500},
+    {"role": "inspector", "kind": "work", "rate_czk_h": 550},
+    {"role": "sales", "kind": "work", "rate_czk_h": 500},
+]
+
+
+def _seed_rate_cards(db):
+    if db.query(RateCard).count() == 0:
+        for row in RATE_CARD_SEED:
+            db.add(RateCard(**row))
+        db.commit()
+
+
 def init_db(db_path=None):
     eng = get_engine(db_path)
+    _migrate(eng)
     Base.metadata.create_all(bind=eng)
     # seed default users (admin + antelon + customer demo)
     # env overrides, jinak výchozí hodnoty pro snadný test
@@ -125,6 +350,7 @@ def init_db(db_path=None):
             if not exists:
                 from .auth import hash_password
                 u = User(email=email, password_hash=hash_password(passwd), role=role)
+                u.roles_json = json.dumps([role])
                 db.add(u)
         db.commit()
         # seed ukázkové projekty pokud prázdné (pro demo)
@@ -151,6 +377,11 @@ def init_db(db_path=None):
                         p.share_code = generate_share_code()
                     db.add(p)
             db.commit()
+        # sazby (RateCard) — idempotentní seed
+        _seed_rate_cards(db)
+        # šablony pipeline + kroky — idempotentní seed (M1.2)
+        from .pipeline_seed import ensure_pipeline_templates
+        ensure_pipeline_templates(db)
     except Exception as e:
         print(f"seed users error: {e}")
         import traceback; traceback.print_exc()

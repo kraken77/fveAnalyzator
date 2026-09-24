@@ -679,3 +679,7 @@ def update_user_role(user_id: int, role: str = Form(...), user: User = Depends(r
     target.role = role
     db.commit()
     return {"status": "ok", "role": target.role}
+
+# ---------- Dispečink (M1) ----------
+from .pipeline_router import router as pipeline_router
+router.include_router(pipeline_router)
