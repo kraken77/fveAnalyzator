@@ -2,10 +2,10 @@
 
 import os
 import json
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -259,6 +259,234 @@ def ai_results(project_id: int, step_id: int, user: User = Depends(get_current_u
              "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
              "created_at": r.created_at.isoformat() if r.created_at else None}
             for r in rows]
+
+
+# ---------- Ekonomika (M4) ----------
+
+class TimeEntryIn(BaseModel):
+    step_id: Optional[int] = None
+    minutes: int
+    work_date: Optional[str] = None
+    kind: str = "admin"
+    note: Optional[str] = None
+
+
+@router.post("/projects/{project_id}/time-entries")
+def add_time_entry_endpoint(project_id: int, data: TimeEntryIn,
+                            user: User = Depends(get_current_user),
+                            db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    step = _get_project_step(db, project_id, data.step_id) if data.step_id else None
+    wd = date.fromisoformat(data.work_date) if data.work_date else date.today()
+    from .economy import add_time_entry
+    te = add_time_entry(db, p, step, user, data.minutes, data.kind, wd, data.note)
+    db.commit()
+    db.refresh(te)
+    return {"id": te.id, "step_id": te.step_id, "minutes": te.minutes,
+            "kind": te.kind, "work_date": te.work_date.isoformat()
+            if te.work_date else None}
+
+
+@router.get("/projects/{project_id}/time-entries")
+def list_time_entries(project_id: int, user: User = Depends(get_current_user),
+                      db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    from .storage import TimeEntry
+    rows = db.query(TimeEntry).filter(TimeEntry.project_id == project_id) \
+        .order_by(TimeEntry.id.desc()).all()
+    out = []
+    for te in rows:
+        u = db.query(User).filter(User.id == te.user_id).first()
+        step_name = None
+        if te.step_id:
+            row = (db.query(ProjectStep, PipelineStep)
+                   .join(PipelineStep, ProjectStep.step_id == PipelineStep.id)
+                   .filter(ProjectStep.id == te.step_id).first())
+            if row:
+                step_name = row[1].name
+        out.append({"id": te.id, "step_id": te.step_id, "step_name": step_name,
+                    "user_email": u.email if u else None, "minutes": te.minutes,
+                    "kind": te.kind, "work_date": te.work_date.isoformat()
+                    if te.work_date else None, "note": te.note or ""})
+    return out
+
+
+@router.get("/projects/{project_id}/time-entries/summary")
+def time_entries_summary(project_id: int, user: User = Depends(get_current_user),
+                         db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    from .economy import time_summary
+    return time_summary(db, project_id)
+
+
+@router.get("/admin/reports/monteri-csv")
+def monteri_csv_report(start: str = Query(None, alias="from"),
+                       end: str = Query(None, alias="to"),
+                       user: User = Depends(require_roles("admin", "antelon")),
+                       db: Session = Depends(get_db)):
+    from .economy import monteri_entries
+    from_d = date.fromisoformat(start) if start else None
+    to_d = date.fromisoformat(end) if end else None
+    rows = monteri_entries(db, from_d, to_d)
+    import csv as _csv
+    import io
+    buf = io.StringIO()
+    w = _csv.writer(buf, delimiter=";")
+    w.writerow(["user", "project", "step", "date", "minutes", "kind", "note"])
+    for r in rows:
+        w.writerow([r["user"], r["project"], r["step"], r["date"],
+                    r["minutes"], r["kind"], r["note"]])
+    return Response(content=buf.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": "attachment; filename=monteri.csv"})
+
+
+# ---------- Materiály (M4.3) ----------
+
+class MaterialIn(BaseModel):
+    code: str
+    name: str
+    unit: str = "ks"
+    price: float = 0.0
+
+
+@router.get("/materials")
+def list_materials(user: User = Depends(require_roles("admin", "antelon", "buyer", "warehouse")),
+                   db: Session = Depends(get_db)):
+    from .storage import Material
+    rows = db.query(Material).order_by(Material.code).all()
+    return [{"id": m.id, "code": m.code, "name": m.name, "unit": m.unit,
+             "price": m.price, "active": m.active} for m in rows]
+
+
+@router.post("/materials")
+def create_material(data: MaterialIn,
+                    user: User = Depends(require_roles("admin", "buyer")),
+                    db: Session = Depends(get_db)):
+    from .storage import Material
+    if db.query(Material).filter(Material.code == data.code).first():
+        raise HTTPException(400, f"Materiál s kódem {data.code!r} už existuje")
+    m = Material(code=data.code, name=data.name, unit=data.unit, price=data.price)
+    db.add(m)
+    db.commit()
+    db.refresh(m)
+    return {"id": m.id, "code": m.code, "name": m.name, "unit": m.unit,
+            "price": m.price}
+
+
+class ProjectMaterialIn(BaseModel):
+    material_id: int
+    qty: float = 1.0
+    lane: str = "plan"
+    step_id: Optional[int] = None
+    price_snapshot: Optional[float] = None
+
+
+@router.post("/projects/{project_id}/materials")
+def add_project_material_endpoint(project_id: int, data: ProjectMaterialIn,
+                                  user: User = Depends(require_roles("admin", "antelon", "buyer", "warehouse")),
+                                  db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    from .storage import Material
+    mat = db.query(Material).filter(Material.id == data.material_id).first()
+    if not mat:
+        raise HTTPException(404, "Materiál nenalezen")
+    step = _get_project_step(db, project_id, data.step_id) if data.step_id else None
+    from .economy import add_project_material
+    pm = add_project_material(db, p, mat, qty=data.qty, lane=data.lane,
+                              step_id=step.id if step else None,
+                              price_snapshot=data.price_snapshot)
+    db.commit()
+    db.refresh(pm)
+    return {"id": pm.id, "material_id": pm.material_id, "qty_planned": pm.qty_planned,
+            "qty_actual": pm.qty_actual, "lane": pm.lane,
+            "price_snapshot": pm.price_snapshot}
+
+
+@router.get("/projects/{project_id}/materials")
+def list_project_materials(project_id: int, user: User = Depends(get_current_user),
+                           db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    from .storage import Material, ProjectMaterial
+    rows = (db.query(ProjectMaterial, Material)
+            .join(Material, ProjectMaterial.material_id == Material.id)
+            .filter(ProjectMaterial.project_id == project_id)
+            .order_by(Material.code, ProjectMaterial.id).all())
+    return [{"id": pm.id, "material_id": m.id, "code": m.code, "name": m.name,
+             "lane": pm.lane, "qty_planned": pm.qty_planned,
+             "qty_actual": pm.qty_actual, "price_snapshot": pm.price_snapshot,
+             "step_id": pm.step_id} for pm, m in rows]
+
+
+@router.get("/projects/{project_id}/materials/balance")
+def materials_balance(project_id: int, user: User = Depends(get_current_user),
+                      db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    from .economy import material_balance
+    return material_balance(db, project_id)
+
+
+# ---------- Fakturace (M4.4) ----------
+
+class InvoiceItemIn(BaseModel):
+    doc_type: str
+    description: Optional[str] = None
+    amount_czk: float = 0.0
+
+
+@router.get("/projects/{project_id}/invoice-items")
+def list_invoice_items(project_id: int, user: User = Depends(get_current_user),
+                       db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    from .storage import InvoiceItem
+    rows = db.query(InvoiceItem).filter(InvoiceItem.project_id == project_id) \
+        .order_by(InvoiceItem.id).all()
+    return [{"id": i.id, "doc_type": i.doc_type, "doc_number": i.doc_number,
+             "description": i.description, "amount_czk": i.amount_czk,
+             "status": i.status, "step_id": i.step_id,
+             "created_at": i.created_at.isoformat() if i.created_at else None}
+            for i in rows]
+
+
+@router.post("/projects/{project_id}/invoice-items")
+def add_invoice_item_endpoint(project_id: int, data: InvoiceItemIn,
+                              user: User = Depends(require_roles("admin", "antelon", "sales")),
+                              db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    from .economy import add_invoice_item
+    inv = add_invoice_item(db, p, data.doc_type, data.description, data.amount_czk)
+    db.commit()
+    db.refresh(inv)
+    return {"id": inv.id, "doc_type": inv.doc_type, "amount_czk": inv.amount_czk,
+            "status": inv.status}
+
+
+class InvoiceStatusIn(BaseModel):
+    status: str
+
+
+@router.post("/projects/{project_id}/invoice-items/{item_id}/status")
+def invoice_item_status(project_id: int, item_id: int, data: InvoiceStatusIn,
+                        user: User = Depends(require_roles("admin", "antelon")),
+                        db: Session = Depends(get_db)):
+    p = _ensure_project_access(project_id, user, db)
+    from .storage import InvoiceItem
+    inv = db.query(InvoiceItem).filter(
+        InvoiceItem.id == item_id, InvoiceItem.project_id == project_id).first()
+    if not inv:
+        raise HTTPException(404, "Faktura nenalezena")
+    if data.status == "issued":
+        if inv.status == "issued":
+            raise HTTPException(400, "Faktura už byla vystavena")
+        from .economy import issue_invoice
+        issue_invoice(db, inv, user)
+        db.commit()
+    elif data.status == "paid":
+        inv.status = "paid"
+        db.commit()
+    else:
+        raise HTTPException(400, "Neplatný status (issued|paid)")
+    db.refresh(inv)
+    return {"id": inv.id, "status": inv.status, "doc_number": inv.doc_number}
 
 
 # ---------- Notifikace (M2.3) ----------

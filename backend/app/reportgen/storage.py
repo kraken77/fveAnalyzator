@@ -242,6 +242,11 @@ class Notification(Base):
     read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class Setting(Base):
+    __tablename__ = "settings"
+    key = Column(String(50), primary_key=True)
+    value = Column(Text, nullable=True)
+
 _engine = None
 _SessionLocal = None
 
@@ -323,6 +328,12 @@ def _seed_rate_cards(db):
         db.commit()
 
 
+def _seed_settings(db):
+    if db.query(Setting).filter(Setting.key == "margin").first() is None:
+        db.add(Setting(key="margin", value="0.30"))
+        db.commit()
+
+
 def init_db(db_path=None):
     eng = get_engine(db_path)
     _migrate(eng)
@@ -379,6 +390,8 @@ def init_db(db_path=None):
             db.commit()
         # sazby (RateCard) — idempotentní seed
         _seed_rate_cards(db)
+        # číselník nastavení (marže ekonomiky) — idempotentní seed (M4)
+        _seed_settings(db)
         # šablony pipeline + kroky — idempotentní seed (M1.2)
         from .pipeline_seed import ensure_pipeline_templates
         ensure_pipeline_templates(db)
