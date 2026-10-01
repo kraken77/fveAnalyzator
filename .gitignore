@@ -148,6 +148,11 @@ data/imports/
 frontend-web/node_modules/
 frontend-web/dist/
 frontend-web/.env
+# frontend-web/src/lib/ drží zdrojový ořezaný Plotly bundle. Stock Python
+# .gitignore výše ignoruje každý adresář `lib/` (řádek 17) — bez téhle
+# výjimky by se `src/lib/plotly.ts` nikdy necommitnul a build by spadl.
+!frontend-web/src/lib/
+!frontend-web/src/lib/**
 docs/superpowers/specs/.tmp/
 backend/data/
 backend/data/*.db

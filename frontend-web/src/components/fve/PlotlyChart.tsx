@@ -1,12 +1,16 @@
 import { useEffect, useRef } from "react";
 
-// Naimportuje se dynamicky — plotly.js-dist-min je megabajt a načítat ho
-// v hlavním bundlu by zdrželo první vykreslení celé aplikace.
-let plotlyPromise: Promise<typeof import("plotly.js-dist-min")> | null = null;
+// Naimportuje se dynamicky — i ořezaný plotly je ~1,2 MB a načítat ho
+// v hlavním bundlu by zdrželo první vykreslení celé aplikace. Modul
+// `../../lib/plotly` registruje jen použité typy grafů; když přidáte nový
+// typ do backendu, musí se přidat tam (hlídá test_plotly_traces.py).
+let plotlyPromise: Promise<typeof import("../../lib/plotly").default> | null =
+  null;
 
 function loadPlotly() {
   if (!plotlyPromise) {
-    plotlyPromise = import("plotly.js-dist-min");
+    // `.default` — modul exportuje instanci Plotly jako default export.
+    plotlyPromise = import("../../lib/plotly").then((m) => m.default);
   }
   return plotlyPromise;
 }
