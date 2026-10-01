@@ -2,8 +2,24 @@
 
 **Datum:** 2026-10-01
 **Zdrojový design:** `docs/superpowers/specs/2026-10-01-fve-analysis-design.md` (schváleno)
-**Status:** k realizaci
+**Status:** k realizaci — **M1–M7 hotovo 2026-10-01**
 **Repo:** `/home/roman/dev/antelon-energy` (dev workspace — produkce `/home/roman/apps/antelon-energy` se nedotýká)
+
+> **Poznámka k tomuto plánu (2026-10-01, po M7):** Legacy Streamlit byl
+> následně odstraněn, takže věty níže o tom, že „legacy běží dál na
+> `/analysis/*`", už neplatí. Když tento plán použijete jako referenci,
+> počítejte s tím, že:
+>
+> - `/analysis/*` a `/report/{energy,economic}` **neexistují**,
+> - `main.run_energy_analysis` a `main.run_economic_analysis` **neexistují**;
+>   volají se přes `app.fve_analysis` (a `ai_service` i `router` byly
+>   migrovány, aby na `main` nezávisely),
+> - `fve_analysis.analysis_param_keys()` nahrazuje
+>   `EnergyAnalysisInput.model_fields` jako filtrační klíče.
+>
+> Změnu shrnuje
+> [spec, sekce Změna 2026-10-01](../specs/2026-10-01-fve-analysis-design.md)
+> a [docs/architektura.md](../../architektura.md).
 
 ---
 

@@ -3,7 +3,30 @@
 **Datum:** 2026-10-01
 **Status:** schváleno uživatelem (2026-10-01, diskuze v plan mode)
 **Repo:** AntelonEnergy (fveAnalyzator) — nové moduly v `backend/app/reportgen/` + `frontend-web/`
-**Zdroj:** přenos funkcionality ze `frontend-streamlit/pages/1_Energetická_analýza.py` (642 ř.) a `2_Ekonomická_analýza.py` (436 ř.), které zůstávají v původní podobě jako legacy
+**Zdroj:** přenos funkcionality ze `frontend-streamlit/pages/1_Energetická_analýza.py` (642 ř.) a `2_Ekonomická_analýza.py` (436 ř.) — **tyto soubory dnes neexistují, viz změnu níže**
+
+> ### Změna 2026-10-01 (po schválení tohoto designu)
+>
+> Legacy Streamlit frontend byl **odstraněn** — rozhodnutím uživatele
+> („chceme vše v jednom"). Zmizely:
+>
+> - kontejner `frontend-streamlit` v `docker-compose.yml` (a `streamlit`
+>   v `requirements.txt`),
+> - endpointy `/analysis/{energy,economic,geocoding}` a
+>   `/report/{energy,economic}` v `backend/main.py` — včetně pydantic
+>   modelů `EnergyAnalysisInput` a `EconomicAnalysisInput`,
+> - adresáře `frontend-streamlit/` a `settings/` (prázdné, netracknuté).
+>
+> Výpočet se **nepřesouval podruhé** — zůstává v `app/fve_analysis.py`.
+> Odstranění si vyžádalo jednu věc navíc, kterou tento design neřešil:
+> `main.run_energy_analysis` a `main.run_economic_analysis` se volaly i
+> jako plain Python funkce z `app/reportgen/ai_service.py` a
+> `app/reportgen/router.py`. Oba moduly teď volají přímo
+> `app.fve_analysis`, čímž zmizel i kruhový import
+> `main → reportgen.router → main`.
+>
+> `/ote/*` zůstalo odložené (chybějí skripty). Aktuální stav systému je
+> v [docs/architektura.md](../../architektura.md).
 
 ## 1. Cíl
 

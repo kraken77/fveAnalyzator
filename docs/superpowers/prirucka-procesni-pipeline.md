@@ -1,8 +1,13 @@
 # Procesní dispečink — uživatelská příručka (procesní pipeline)
 
-> Verze: 2026-09-24 · Modul M1–M6 · Zdroje: [design](2026-09-24-procesni-pipeline-design.md), [plán](2026-09-24-procesni-pipeline.md), [image-spec]()
+> Verze: 2026-09-24 · Modul M1–M6 · Zdroje: [design](specs/2026-09-24-procesni-pipeline-design.md), [plán](plans/2026-09-24-procesni-pipeline.md)
 >
 > Tato příručka popisuje používání **procesního dispečinku** v aplikaci Antelon Energy (React frontend `frontend-web` + FastAPI backend `/api/v1`). Pokrývá role, denní práci obchodníka, montéra, nákupčího, skladníka, administrátora i pohled zákazníka.
+>
+> **Poznámka 2026-10-01:** Před dispečinkem může zakázka začít jako
+> **rozpracovaná FVE analýza** (stav `fve_analyza`), která se jedním
+> krokem převede na lead — viz [Životní cyklus zakázky](../architektura.md#životní-cyklus-zakázky).
+> Architektura systému jako celku je v [docs/architektura.md](../architektura.md).
 
 ---
 

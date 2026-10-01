@@ -23,24 +23,27 @@ This project provides a comprehensive toolkit for analyzing PV power plant feasi
   - **Iterativní Net Surplus**: Spotřebiče jsou spínány sekvenčně na základě čistého dostupného přebytku.
   - **Chytré nabíjení EV**: Podpora strategií (Týdně, Denně, Víkendy) s definovanými kapacitami baterií (např. Jaecoo ~18kWh, Enyaq ~60-80kWh).
   - **Realistický "Fallback"**: Spotřebiče jako pračka a sušička se automaticky spustí ze sítě ve večerních hodinách, pokud nebyla během dne dostatečná výroba FVE.
-- **Ukládání nastavení**: Možnost uložit aktuální parametry analýzy do JSON souborů pro pozdější použití.
+- **Uložení analýzy**: Výsledek jde uložit jako **rozpracovanou analýzu** (stav `fve_analyza`) s kontaktem na zákazníka, a později jedním kliknutím převést na zakázku, která navazuje na pipeline. Viz [Životní cyklus zakázky](docs/architektura.md#životní-cyklus-zakázky).
 - **Hloubková vizualizace**:
   - **Sunburst grafy**: Interaktivní hierarchický rozpad energie a úspor (Celkem -> Vlastní spotřeba -> Spotřebič).
   - **Treemaps**: Vizualizace podílníků na odběru ze sítě.
   - **Vylepšené UI/UX**: Responzivní tabulky, indikátory načítání (spinners) pro dlouhé operace.
-- **Reporting a Exporty**:
-  - **PDF**: Generování komplexních PDF reportů (Energetický, Ekonomický, OTE).
-  - **Excel (XLSX)**: Detailní exporty všech tabulek a vstupních parametrů pro další analýzu.
+- **Reporting**:
+  - **PDF**: Generování komplexních PDF reportů (Energetický, Ekonomický, OTE, Antelon Pentagon 16:9).
+  - **Excel (XLSX)**: pouze **import** — `Administrace → Import` načte `PROCESNÍ DISPEČINK.xlsx`. *Export* do Excelu neexistuje.
 
 ## Použité Technologie
 
 - **Jazyk**: Python 3.12+
-- **Frontend**: Streamlit + React (Vite TS, Tailwind)
+- **Frontend**: React 18 + Vite + TypeScript + Tailwind (jediný klient, `frontend-web/`)
 - **Backend API**: FastAPI
 - **Zpracování dat**: Pandas, NumPy, pvlib
 - **Vizualizace**: Plotly, Kaleido, Matplotlib
 - **Reporting**: WeasyPrint, Jinja2
 - **Kontejnerizace**: Docker, Nginx
+
+> Architektura, cesta požadavku, mapa endpointů a seznam věcí, které
+> systém **neumí**, jsou v [docs/architektura.md](docs/architektura.md).
 
 ## Instalace a Spuštění
 
@@ -48,10 +51,10 @@ This project provides a comprehensive toolkit for analyzing PV power plant feasi
 
 Nejjednodušší způsob pro spuštění celé aplikace.
 
-1. **Zkontrolujte volné porty** (aktuální compose používá 3000, 8051, 8550 — 8050 je obsazený jiným projektem):
+1. **Zkontrolujte volné porty** (aktuální compose používá 3000 a 8051 — 8050 je obsazený jiným projektem):
 
     ```bash
-    ss -tln | grep -E "3000|8051|8550"
+    ss -tln | grep -E "3000|8051"
     ```
 
 2. **Sestavte a spusťte kontejnery:**
@@ -61,9 +64,8 @@ Nejjednodušší způsob pro spuštění celé aplikace.
     ```
 
 3. **Otevřete aplikaci:**
-    - ReportGen Web (React): [http://localhost:3000](http://localhost:3000)
+    - Web (React): [http://localhost:3000](http://localhost:3000)
     - Backend API (FastAPI): [http://localhost:8051/docs](http://localhost:8051/docs)
-    - Frontend (Streamlit, legacy): [http://localhost:8550](http://localhost:8550)
 
     Výchozí účty (seed při prvním startu, hesla lze změnit v `.env`):
 
@@ -109,28 +111,62 @@ End-to-end procesní dispečink zakázek (lead → příprava/smlouva → realiz
 
 Viz `docs/superpowers/specs/2026-09-24-procesni-pipeline-design.md` (design) a `docs/superpowers/plans/2026-09-24-procesni-pipeline.md` (plán M1–M6).
 
+### 1d. FVE analýza (přeneseno ze Streamlitu)
+
+Energetická i ekonomická analýza FVE, původně ve Streamlitu, teď v
+`frontend-web` + `backend/app/fve_analysis.py`:
+
+- **Dvě místa, jedna komponenta**: `/fve-analysis` (samostatně) a
+  `/projects/{id}/fve-analysis` (u existující zakázky). Formulář,
+  výsledky i sběr kontaktu jsou sdílené.
+- **Kontakt je povinný** v obou případech — jméno, e-mail, telefon, těsně
+  před uložením.
+- **Rozpracovaná analýza** (`Project` ve stavu `fve_analyza`) vznikne
+  uložením. `admin`/`antelon` ji pak jedním kliknutím převede na zakázku
+  (`lead`) — pipeline se připojí ze šablony, kroky na které analýza už
+  odpověděla se označí jako hotové, a analýza pokračuje v běžném toku.
+  Převod je idempotentní.
+- **Dostupná i pro roli `customer`** (menu *FVE analýza*), nejen pro
+  interní uživatele.
+- **Výpočet je v jednom modulu** (`app/fve_analysis.py`) a neví o HTTP —
+  mapování chyb na status codes je věc routeru.
+
+Viz [docs/architektura.md](docs/architektura.md#životní-cyklus-zakázky).
+
 ### 2. Lokální Vývoj
 
-1. **Vytvořte virtuální prostředí:**
+Běží **dvě věci zároveň** — backend a frontend.
+
+1. **Vytvořte virtuální prostředí a nainstalujte závislosti:**
 
     ```bash
     python3 -m venv venv
     source venv/bin/activate  # Windows: venv\Scripts\activate
-    ```
-
-2. **Nainstalujte závislosti:**
-
-    ```bash
     pip install -r requirements.txt
     ```
 
-3. **Spusťte Frontend:**
+2. **Spusťte backend** (z kořene repozitáře):
 
     ```bash
-    streamlit run frontend-streamlit/app.py
+    uvicorn backend.main:app --reload --port 8000
     ```
 
-    *(Poznámka: Pro plnou funkčnost musí běžet i backend, např. přes `uvicorn backend.main:app --reload`)*
+3. **Spusťte frontend** (z `frontend-web/`, v druhém terminálu):
+
+    ```bash
+    npm install
+    VITE_DEV_PROXY_TARGET=http://127.0.0.1:8000 npm run dev
+    ```
+
+    > `VITE_DEV_PROXY_TARGET` je nutný: `vite.config.ts` má ve výchozím
+    > stavu proxy `/api/v1` na `127.0.0.1:8000`. Když backend pustíte na
+    > jiném portu (např. 8051 jako v Dockeru), frontend nebude volat API a
+    > uvidíte jen síťové chyby v konzoli prohlížeče.
+
+    Aplikace je na [http://localhost:5173](http://localhost:5173).
+
+**Docker je jednodušší** — `docker compose up --build -d` zvedne obojí
+na 3000/8051 bez řešení portů a proxy.
 
 ### 3. Nasazení na server (produkce)
 
@@ -150,75 +186,96 @@ Aplikace běží na serveru **drakisa** (192.168.119.167) jako Docker Compose pr
 
 - Produkční data (`reportgen.db`, `data/projects/`, `spot_market.db`) žijí pouze na disku serveru — **nejsou v gitu** a nesmí se přepsat lokální vývojovou verzí.
 - Citlivé hodnoty (hesla, `RG_JWT_SECRET`, `RG_PUBLIC_URL=https://fve.etikos.cz`) jsou v `.env` na serveru; v gitu je jen `.env.example`.
-- Legacy Streamlit frontend na serveru neběží (Exited) — aktivní klient je `frontend-web` (React).
 
-## Integrace Dat (Spotové ceny OTE)
+## Integrace Dat (Spotové ceny OTE) — není hotovo
 
-Projekt obsahuje sadu skriptů pro správu dat z OTE-CR. Pro uživatele je připraven jediný sjednocující skript.
+**OTE analýza je vědomě odložená.** Endpointy `/ote/update`,
+`/ote/status`, `/ote/analyze` a `/report/ote` v `backend/main.py` existují,
+ale **nejsou funkční**, protože chybějí skripty, které by stahovala a
+zpracovávala data z OTE-CR:
 
-1. **Aktualizace dat**:
+| Očekávaný soubor | Stav |
+|---|---|
+| `run_ote_update.py` | chybí |
+| `download_ote_data.sh` | chybí |
+| `process_ote_data.py` | chybí |
 
-    ```bash
-    python3 run_ote_update.py
-    ```
+Dnešní stav: `GET /ote/status` vrátí `{"status": "empty"}`,
+`POST /ote/update` skončí 500, `data/spot_market.db` je prázdná a ve
+frontendu OTE není nikde propojené.
 
-    Tento skript automaticky:
-    - Stáhne chybějící data pro roky **2019 až 2026**.
-    - Podporuje "chytrou" inkrementální aktualizaci (stahuje/zpracovává jen nové dny).
-    - Aktualizuje lokální SQLite databázi `data/spot_market.db`.
-
-    *Poznámka: Pro starší roky (2019-2022) může skript upozornit na chybějící kurzovní lístky CNB pokud nejsou staženy, v tom případě použije bezpečný fallback kurz.*
+Není to bug, ale nedokončená část projektu — skripty je potřeba doplnit.
+Podrobnosti v [docs/architektura.md](docs/architektura.md#ote--spotové-ceny).
 
 ## Testování
 
-Projekt obsahuje E2E testy využívající framework **Playwright**.
-
-### 1. Instalace prohlížečů
-
-Při prvním spuštění je nutné nainstalovat prohlížeče (Chromium):
+Testy jsou **pytest + FastAPI `TestClient`**, ne E2E. Frontendu chybí
+test framework — jeho bránkou je `npm run build` (`tsc -b && vite build`).
 
 ```bash
-# Vstup do venv
+# venv
 source venv/bin/activate
 
-# Instalace
-playwright install chromium
+# všechny testy (~4 minuty, 143 testů)
+pytest tests/
+
+# jen rychlé testy API a úklidu
+pytest tests/reportgen/test_fve_api.py tests/reportgen/test_legacy_removal.py
 ```
 
-### 2. Spuštění testů
+Testy nepotřebují běžící aplikaci ani síť a nesahají na vývojovou
+databázi — každý dostává vlastní dočasnou SQLite. Dvě věci, které je
+třeba vědět, když něco selhává:
 
-Testy předpokládají běžící aplikaci na `http://localhost:8550`.
+- **Používejte souřadnice z `data/weather_cache.db`** (50.0880 / 14.4208).
+  Jakákoli jiná lokalita jde na síť k PVGIS a test timeoutuje.
+- **Testy jsou záměrně neosazené.** Spotřební data se generují s
+  `np.random.normal(0, 0.1)`, takže dva běhy se liší o ~0.005 %. Aserce
+  mají rezervu řádově 10⁴ nad tímto šumem.
 
-```bash
-# Spuštění testů
-pytest tests/test_e2e.py
-```
+Podrobnosti a přehled, co který soubor testů pokrývá, jsou v
+[docs/architektura.md](docs/architektura.md#testy).
 
 ## Architektura (Komunikační Matice)
+
+Jediný klient je `frontend-web` (React). Nginx z něj propouští **jen
+`/api/`** na backend — nic jiného na veřejný web nevede.
 
 ```mermaid
 graph TD
     User((Uživatel))
-    Streamlit[Streamlit Aplikace]
-    FastAPI[FastAPI Backend]
+    Web[frontend-web<br/>React + Vite]
+    Nginx[Nginx<br/>proxy jen /api/]
+    Router[FastAPI routery<br/>/api/v1/*]
+    FVE[app/fve_analysis.py<br/>výpočet, neví o HTTP]
     Analyzer[Modul Analýzy]
     DataLoader[Načítání Dat]
-    PVCalculator[Solární Výpočty (pvlib)]
+    PVGIS[pvlib / PVGIS]
     Visualizer[Vizualizace]
     Reporter[Generování PDF]
-    Data[(Datové Zdroje - OTE, PVGIS)]
+    DB[(reportgen.db<br/>projekty, pipeline)]
+    Data[(Datové Zdroje - PVGIS, OTE*)]
 
-    User -->|Ovládá| Streamlit
-    Streamlit -->|REST API| FastAPI
-    FastAPI -->|Počítá| Analyzer
-    FastAPI -->|Čerpá data| DataLoader
-    FastAPI -->|Vykresluje| Visualizer
-    FastAPI -->|Tvoří report| Reporter
-    
-    DataLoader -->|API| PVCalculator
-    DataLoader -->|SQL/CSV| Data
-    
-    Analyzer -->|Simulace| DataLoader
-    Visualizer -->|Data| Analyzer
-    Reporter -->|Grafy| Visualizer
+    User -->|Prohlížeč| Web
+    Web -->|fetch /api/v1/*| Nginx
+    Nginx -->|proxy_pass| Router
+    Router -->|dict parametrů| FVE
+    Router -->|uložení| DB
+    FVE --> Analyzer
+    Analyzer --> DataLoader
+    DataLoader --> PVGIS
+    DataLoader --> Data
+    FVE --> Visualizer
+    Visualizer -->|sloupce s grafy| Router
+    Router --> Reporter
+    Reporter --> DB
+
+    style FVE fill:#e8f4ea,stroke:#4a7
+    style DB fill:#f4f0e8,stroke:#a84
 ```
+
+`*` OTE je odložené — viz [Integrace Dat](#integrace-dat-spotové-ceny-ote--není-hotovo).
+
+Úplný popis — cesta požadavku, mapa endpointů, životní cyklus zakázky
+a seznam věcí, které systém neumí — je v
+[docs/architektura.md](docs/architektura.md).
