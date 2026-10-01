@@ -63,6 +63,7 @@ webencodings==0.5.1
 zopfli==0.4.0
 fastapi
 uvicorn[standard]
+email-validator==2.2.0  # pydantic EmailStr pro kontakt zákazníka
 pvlib
 streamlit
 playwright

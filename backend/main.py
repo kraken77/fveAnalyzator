@@ -37,8 +37,10 @@ app.add_middleware(
 # ReportGen module
 try:
     from app.reportgen.router import router as reportgen_router
+    from app.reportgen.fve_router import router as fve_router
     from app.reportgen.storage import init_db as reportgen_init_db
     app.include_router(reportgen_router)
+    app.include_router(fve_router)
     reportgen_init_db()
 except Exception as e:
     print(f"ReportGen init failed: {e}")
