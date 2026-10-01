@@ -65,7 +65,6 @@ fastapi
 uvicorn[standard]
 email-validator==2.2.0  # pydantic EmailStr pro kontakt zákazníka
 pvlib
-streamlit
 playwright
 pytest-playwright
 SQLAlchemy==2.0.25

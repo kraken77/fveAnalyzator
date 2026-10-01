@@ -10,7 +10,7 @@ Každý AI krok šablony má state_model='ai' a kód mapovaný na `kind`:
 
 run_ai posune krok do in_progress a uloží draft výsledek; review_ai schválí
 (done) nebo zamítne (krok zůstává in_progress). Fyzické výpočty jsou
-mocking-friendly — volají se přes `main.*` (modul načítaný lazy).
+mocking-friendly — volají se přes `app.fve_analysis` (modul načítaný lazy).
 """
 
 import json
@@ -40,13 +40,20 @@ def _now():
     return datetime.utcnow()
 
 
-def _import_main():
-    """Lazy import backend/main.py (cesta resolvovaná od backend/app)."""
+def _import_fve():
+    """Lazy import app.fve_analysis (cesta resolvovaná od backend/app).
+
+    Voláme přímo výpočetní modul, ne `main.py`. Dřív tady byla vazba na
+    `main.*` — legacy HTTP endpointy — což znamenalo kruhový import
+    (main → reportgen.router → main) jen proto, že šlo dosáhnout na dvě
+    funkce. Teď je `app.fve_analysis` jediné místo, kde analýza žije.
+    """
     backend = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     if backend not in sys.path:
         sys.path.insert(0, backend)
-    import main
-    return main
+    from app import fve_analysis
+
+    return fve_analysis
 
 
 def _params(project, prefix):
@@ -103,23 +110,23 @@ def _battery(db, project):
 # ---------- handlery ----------
 
 def _run_fve_size(db, project, user):
-    main = _import_main()
     fve = _params(project, "fve_params")
-    valid = {k: v for k, v in fve.items()
-             if k in main.EnergyAnalysisInput.model_fields}
-    inp = main.EnergyAnalysisInput(**valid)
-    res = main.run_energy_analysis(inp)
+    fve_mod = _import_fve()
+    keys = fve_mod.analysis_param_keys()
+    valid = {k: v for k, v in fve.items() if k in keys}
+    res = fve_mod.run_energy_analysis(valid)
 
-    kwp = float(res.get("kwp") or inp.kwp)
+    kwp = float(res.get("kwp") or valid.get("kwp") or 10)
     eb = res.get("energy_balance_kwh") or {}
     fb = res.get("financial_balance") or {}
     self_cons = float(eb.get("self_consumption") or 0)
     total = float(eb.get("total_consumption") or 0)
     investice = float(fve.get("investice_czk") or kwp * 45000)
 
-    eco = main.run_economic_analysis(main.EconomicAnalysisInput(
-        annual_savings=float(fb.get("annual_savings_czk") or 0),
-        investment_cost=investice))
+    eco = fve_mod.run_economic_analysis({
+        "annual_savings": float(fb.get("annual_savings_czk") or 0),
+        "investment_cost": investice,
+    })
     metrics = eco.get("metrics") or {}
 
     return {
@@ -139,17 +146,17 @@ def _run_fve_size(db, project, user):
 
 
 def _run_battery(db, project, user):
-    main = _import_main()
     fve = _params(project, "fve_params")
+    fve_mod = _import_fve()
+    keys = fve_mod.analysis_param_keys()
     kwp = _kwp(db, project) or float(fve.get("kwp") or 10)
     variants = [5.0, 10.0, 15.0]
     rows = []
     for cap in variants:
-        valid = {k: v for k, v in fve.items()
-                 if k in main.EnergyAnalysisInput.model_fields}
+        valid = {k: v for k, v in fve.items() if k in keys}
         valid["kwp"] = kwp
         valid["battery_capacity"] = cap
-        res = main.run_energy_analysis(main.EnergyAnalysisInput(**valid))
+        res = fve_mod.run_energy_analysis(valid)
         eb = res.get("energy_balance_kwh") or {}
         fb = res.get("financial_balance") or {}
         self_cons = float(eb.get("self_consumption") or 0)
@@ -205,11 +212,11 @@ def _save_pdf(db, project, template, pdf_bytes, user):
 
 
 def _run_offer_pdf(db, project, user):
-    main = _import_main()
     fve = _params(project, "fve_params")
-    valid = {k: v for k, v in fve.items()
-             if k in main.EnergyAnalysisInput.model_fields}
-    res = main.run_energy_analysis(main.EnergyAnalysisInput(**valid))
+    fve_mod = _import_fve()
+    keys = fve_mod.analysis_param_keys()
+    valid = {k: v for k, v in fve.items() if k in keys}
+    res = fve_mod.run_energy_analysis(valid)
     from app.reporting import ReportGenerator
     pdf_bytes = ReportGenerator().generate_energy_report(res)
     pv = _save_pdf(db, project, "energy", pdf_bytes, user)

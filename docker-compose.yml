@@ -35,19 +35,3 @@ services:
       - backend
     environment:
       - VITE_API_URL=/api/v1
-
-  frontend-streamlit:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8550:8501" # Changed host port to avoid conflict
-    volumes:
-      - ./frontend-streamlit:/app # Mount the Streamlit app directory
-      - ./backend:/backend_app # Mount the backend app as well to allow imports if needed
-      - ./settings:/app/settings # Mount the settings directory
-    environment:
-      - PYTHONUNBUFFERED=1
-      - BACKEND_URL=http://backend:8000 # Point to the backend service within the Docker network
-    working_dir: /app
-    command: streamlit run app.py --server.port 8501 --server.address 0.0.0.0

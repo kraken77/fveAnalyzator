@@ -35,8 +35,10 @@ def _mod(name: str):
     return importlib.import_module(f"app.{name}")
 
 
-# Defaulty jsou z EnergyAnalysisInput v backend/main.py. Kopírují se sem,
-# aby volající nemuseli znát pydantic schéma.
+# Původně to byly defaulty pydantic modelu EnergyAnalysisInput v backend/main.py.
+# Ten model je pryč (legacy Streamlit odstraněn), _DEFAULTS je teď jediné místo,
+# kde jsou uložené — a `analysis_param_keys()` je veřejné rozhraní pro
+# volající s uloženým JSONem parametrů.
 _DEFAULTS = {
     "kwp": 10.0,
     "battery_capacity": 10.0,
@@ -67,6 +69,18 @@ def default_params() -> Dict[str, Any]:
     active_appliances_data vynecháváme — to je runtime stav, ne nastavení.
     """
     return {k: v for k, v in _DEFAULTS.items() if k != "active_appliances_data"}
+
+
+def analysis_param_keys() -> set:
+    """Klíče, které `run_energy_analysis` čte.
+
+    Volající, kteří mají uložený JSON parametrů získaný od uživatele
+    (např. `projects.fve_params_json`), potřebují vědět, co do něj
+    poslat — ne aby se dovnitř dostalo všechno, co tam je uložené.
+    `default_params()` na to nestačí: ten záměrně vynechává
+    `active_appliances_data`, což je runtime stav spotřebičů, ne nastavení.
+    """
+    return set(_DEFAULTS)
 
 
 def appliance_catalog() -> list:

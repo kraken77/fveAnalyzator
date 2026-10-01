@@ -121,9 +121,9 @@ def test_run_ai_fve_size_draft(db):
                                                   "annual_consumption_mwh": 5})
     from reportgen.ai_service import run_ai
     ps = ps_by_code(db, p, "navrh_fve")
-    with mock.patch("main.run_energy_analysis",
+    with mock.patch("app.fve_analysis.run_energy_analysis",
                     return_value=energy_result(kwp=8.0, battery=10.0)) as mock_ea, \
-         mock.patch("main.run_economic_analysis", return_value=economic_result()):
+         mock.patch("app.fve_analysis.run_economic_analysis", return_value=economic_result()):
         res = run_ai(db, p, ps, admin_user(db), trigger="auto")
 
     assert res.kind == "fve_size"
@@ -173,15 +173,16 @@ def test_run_ai_battery_picks_variant(db):
     p = mk_project(db, template="rd", fve_params={"kwp": 8, "battery_capacity": 0,
                                                   "annual_consumption_mwh": 5})
 
-    def fake_energy(inp):
+    def fake_energy(params):
         # nejvyšší samospotřeba = 15 kWh varianta
         pct = {5: 0.3, 10: 0.55, 15: 0.8}
-        return energy_result(kwp=8.0, battery=inp.battery_capacity,
-                             self_pct=pct.get(int(inp.battery_capacity), 0.5))
+        cap = params["battery_capacity"]
+        return energy_result(kwp=8.0, battery=cap,
+                             self_pct=pct.get(int(cap), 0.5))
 
     from reportgen.ai_service import run_ai
     ps = ps_by_code(db, p, "kapacita_baterie")
-    with mock.patch("main.run_energy_analysis", side_effect=fake_energy):
+    with mock.patch("app.fve_analysis.run_energy_analysis", side_effect=fake_energy):
         res = run_ai(db, p, ps, admin_user(db), trigger="auto")
     out = json.loads(res.output_json)
     assert out["doporuceno_kwh"] == 15
@@ -206,9 +207,9 @@ def test_run_ai_offer_pdf_creates_pdfversion(db, tmp_path):
     from reportgen.ai_service import run_ai
     ps = ps_by_code(db, p, "nabidka_podrobna")
 
-    with mock.patch("main.run_energy_analysis",
+    with mock.patch("app.fve_analysis.run_energy_analysis",
                     return_value=energy_result(kwp=8.0, battery=10.0)), \
-         mock.patch("main.run_economic_analysis", return_value=economic_result()):
+         mock.patch("app.fve_analysis.run_economic_analysis", return_value=economic_result()):
         # ReportGenerator běžně tiskne do CWD; mockneme generátor
         from app.reporting import ReportGenerator
         with mock.patch.object(ReportGenerator, "generate_energy_report",
@@ -226,8 +227,8 @@ def test_run_ai_failure_raises_500_and_keeps_state(db):
     from reportgen.ai_service import run_ai
     ps = ps_by_code(db, p, "navrh_fve")
     before = ps.status
-    with mock.patch("main.run_energy_analysis", side_effect=Exception("PVGIS down")), \
-         mock.patch("main.run_economic_analysis", return_value=economic_result()):
+    with mock.patch("app.fve_analysis.run_energy_analysis", side_effect=Exception("PVGIS down")), \
+         mock.patch("app.fve_analysis.run_economic_analysis", return_value=economic_result()):
         with pytest.raises(HTTPException) as ei:
             run_ai(db, p, ps, admin_user(db), trigger="auto")
         assert ei.value.status_code == 500
@@ -265,9 +266,9 @@ def test_api_run_ai_and_review(client, admin_token):
     steps = {s["code"]: s for s in view["steps"]}
     fve_step = steps["navrh_fve"]
 
-    with mock.patch("main.run_energy_analysis",
+    with mock.patch("app.fve_analysis.run_energy_analysis",
                     return_value=energy_result(kwp=8.0, battery=10.0)), \
-         mock.patch("main.run_economic_analysis", return_value=economic_result()):
+         mock.patch("app.fve_analysis.run_economic_analysis", return_value=economic_result()):
         resp = client.post(f"/api/v1/projects/{pid}/steps/{fve_step['id']}/run-ai",
                            json={"trigger": "auto"}, headers=auth)
     assert resp.status_code == 200, resp.text
@@ -294,9 +295,9 @@ def test_api_review_non_admin_forbidden(client, admin_token):
     view = client.get(f"/api/v1/projects/{pid}/pipeline", headers=auth).json()
     fve = {s["code"]: s for s in view["steps"]}["navrh_fve"]
 
-    with mock.patch("main.run_energy_analysis",
+    with mock.patch("app.fve_analysis.run_energy_analysis",
                     return_value=energy_result(kwp=8.0, battery=10.0)), \
-         mock.patch("main.run_economic_analysis", return_value=economic_result()):
+         mock.patch("app.fve_analysis.run_economic_analysis", return_value=economic_result()):
         resp = client.post(f"/api/v1/projects/{pid}/steps/{fve['id']}/run-ai",
                            json={"trigger": "auto"}, headers=auth)
     result_id = resp.json()["id"]

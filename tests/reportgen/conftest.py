@@ -8,9 +8,15 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-BACKEND_APP = REPO_ROOT / "backend" / "app"
+BACKEND = REPO_ROOT / "backend"
+BACKEND_APP = BACKEND / "app"
 if str(BACKEND_APP) not in sys.path:
     sys.path.insert(0, str(BACKEND_APP))
+# `backend/` na path jako v kontejneru (WORKDIR=/app je backend). Bez toho
+# nelze resolvovat `app.fve_analysis`, kterej patchuje test_ai.py, ani
+# `main`, kterej importuje reportgen.
+if str(BACKEND) not in sys.path:
+    sys.path.insert(0, str(BACKEND))
 
 # Ensure tests never touch the real dev/prod DB defaults.
 os.environ.setdefault("RG_ADMIN_EMAIL", "admin@test.local")

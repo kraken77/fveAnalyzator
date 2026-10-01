@@ -505,39 +505,33 @@ def generate_pdf(project_id: int, data: GenerateIn, user: User = Depends(get_cur
         pdf_bytes = generate_antelon_pdf(analysis, p, antelon_params, visibility)
         params_snapshot = antelon_params
     else:
-        # fve wrap - reuse existing main.py logic directly
+        # fve wrap - reuse app.fve_analysis, the single source of truth
         fve_params = json.loads(p.fve_params_json) if p.fve_params_json else {}
         try:
             if template == "energy":
-                # Build EnergyAnalysisInput from fve_params and call main's analysis
-                import sys
-                sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
-                from main import EnergyAnalysisInput, run_energy_analysis
+                from app.fve_analysis import analysis_param_keys, run_energy_analysis
                 # Filter fve_params to valid fields
-                valid = {k: v for k, v in fve_params.items() if k in EnergyAnalysisInput.model_fields}
-                input_data = EnergyAnalysisInput(**valid)
-                result = run_energy_analysis(input_data)
+                valid = {k: v for k, v in fve_params.items() if k in analysis_param_keys()}
+                result = run_energy_analysis(valid)
                 from app.reporting import ReportGenerator
                 rg = ReportGenerator()
                 pdf_bytes = rg.generate_energy_report(result)
                 params_snapshot = fve_params
             elif template == "economic":
-                import sys
-                sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
-                from main import EconomicAnalysisInput, run_economic_analysis
+                from app.fve_analysis import (analysis_param_keys,
+                                              run_economic_analysis,
+                                              run_energy_analysis)
+                eco_keys = {"annual_savings", "investment_cost", "years",
+                            "sp500_return", "inflation", "discount_rate"}
                 # Need annual_savings - compute via energy if missing
                 if "annual_savings" not in fve_params or fve_params["annual_savings"] is None:
-                    from main import EnergyAnalysisInput, run_energy_analysis
-                    valid_e = {k: v for k, v in fve_params.items() if k in EnergyAnalysisInput.model_fields}
-                    if not valid_e:
-                        valid_e = {}
-                    er = run_energy_analysis(EnergyAnalysisInput(**valid_e))
+                    valid_e = {k: v for k, v in fve_params.items() if k in analysis_param_keys()}
+                    er = run_energy_analysis(valid_e)
                     fve_params["annual_savings"] = er["financial_balance"]["annual_savings_czk"]
                     p.fve_params_json = json.dumps(fve_params)
                     db.commit()
-                valid = {k: v for k, v in fve_params.items() if k in EconomicAnalysisInput.model_fields}
-                input_data = EconomicAnalysisInput(**valid)
-                result = run_economic_analysis(input_data)
+                valid = {k: v for k, v in fve_params.items() if k in eco_keys}
+                result = run_economic_analysis(valid)
                 from app.reporting import ReportGenerator
                 rg = ReportGenerator()
                 pdf_bytes = rg.generate_economic_report(result)
