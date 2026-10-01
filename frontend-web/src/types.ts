@@ -218,3 +218,118 @@ export interface ProjectEconomy {
   sell: number;
   sell_actual: number;
 }
+// ---------- fveAnalysis ----------
+// Backend: backend/app/reportgen/fve_router.py
+
+export interface FveParams {
+  kwp: number;
+  battery_capacity: number;
+  annual_consumption_mwh: number;
+  price_power: number;
+  price_distribution: number;
+  price_sell: number;
+  sell_price_scheme: "fixed" | "community" | "shared" | "spot";
+  community_sell_price: number;
+  shared_sell_price: number;
+  spot_price_margin: number;
+  latitude: number;
+  longitude: number;
+  surface_tilt: number;
+  surface_azimuth: number;
+  /** null = bez limitu exportu. Backend to rozlišuje od 0 (limit nula). */
+  grid_export_limit_kw: number | null;
+  system_loss_factor: number;
+  winter_loss_factor: number;
+  thermal_battery_capacity_kwh: number;
+  thermal_battery_charge_power_kw: number;
+  active_appliances: string[];
+}
+
+export interface FveAppliance {
+  name: string;
+  power_kw: number;
+  type: string;
+  description: string;
+}
+
+export interface FveGeocode {
+  latitude: number;
+  longitude: number;
+  display_name: string;
+}
+
+export interface FveAnalysisResult {
+  kwp: number;
+  latitude: number;
+  longitude: number;
+  battery_capacity: number;
+  annual_consumption_mwh: number;
+  financial_balance: {
+    annual_savings_czk: number;
+    cost_without_pv_czk: number;
+    cost_with_pv_czk: number;
+  };
+  energy_balance_kwh: {
+    total_consumption: number;
+    grid_import: number;
+    grid_export: number;
+    self_consumption: number;
+  };
+  economic_balance_czk: {
+    cost_total_consumption: number;
+    cost_import: number;
+    revenue_export: number;
+    savings_self_consumption: number;
+  };
+  production_details: {
+    total_production_actual: number;
+    total_production_optimal: number;
+    production_performance_pct: number;
+  };
+  /** Každý graf je JSON STRING — backend volá plotly.io.to_json().
+   *  PlotlyChart ho parsuje. Kdyby tu byl objekt, graf by přestal fungovat
+   *  bez jakékoli chyby. */
+  plots: Record<string, string>;
+  appliance_metrics: Record<string, {
+    fve_kWh: number;
+    grid_kWh: number;
+    total_kWh: number;
+    savings_czk: number;
+    grid_cost_czk: number;
+    operating_hours: number;
+    coverage_pct: number;
+  }>;
+  appliance_details: FveAppliance[];
+  recommendations: string[];
+  monthly_summary: Array<Record<string, number | string>>;
+  appliance_monthly_summary: Array<Record<string, number | string>>;
+  raw_data: unknown;
+}
+
+export interface FveEconomicResult {
+  metrics: {
+    payback_years: number | string;
+    discounted_payback_years: number | string;
+    npv_czk: number;
+    final_pv_gain_czk: number;
+    final_pv_reinvest_gain_czk: number;
+    final_sp500_net_czk: number;
+  };
+  plot: string | null;
+  raw_data: Array<Record<string, number>>;
+}
+
+export interface FveContact {
+  name: string;
+  email: string;
+  phone: string;
+}
+
+export interface SavedAnalysis {
+  id: number;
+  status: string;
+  share_code: string;
+  customer_id: number;
+  /** true = právě vznikl uživatelský účet pro tento kontakt */
+  customer_created: boolean;
+}

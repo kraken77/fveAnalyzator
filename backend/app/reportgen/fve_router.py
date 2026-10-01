@@ -7,8 +7,10 @@ Výpočet deleguje do app.fve_analysis — tady je jen auth, validace a DB.
 """
 import json
 import secrets
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
@@ -162,6 +164,27 @@ def run_economic(params: dict, user: User = Depends(ANY_ROLE)):
     from app.fve_analysis import run_economic_analysis
 
     return run_economic_analysis(params or {})
+
+
+@router.post("/fve-analysis/report/energy")
+def energy_pdf(result: dict, user: User = Depends(ANY_ROLE)):
+    """PDF energetické analýzy. Reuse legacy generátor, ale pod /api/v1
+    a s auth — legacy /report/energy je bez obou a client má
+    baseURL=/api/v1, takže by se netrefil."""
+    from app.reporting import ReportGenerator
+
+    if not result or "energy_balance_kwh" not in result:
+        raise HTTPException(400, "Chybí výsledek analýzy")
+    try:
+        pdf_bytes = ReportGenerator().generate_energy_report(result)
+    except Exception as e:
+        raise HTTPException(500, f"PDF se nepodařilo vygenerovat: {e}")
+    fname = f"fve_energy_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+    return Response(
+        content=pdf_bytes, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"',
+                 "X-Filename": fname},
+    )
 
 
 def _create_customer(db: Session, contact: Contact) -> User:

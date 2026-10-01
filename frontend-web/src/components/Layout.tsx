@@ -72,6 +72,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Link to="/projects" className="text-sm font-medium hover:text-antelonGreen transition">
               {isCustomer ? "Moje projekty" : "Projekty"}
             </Link>
+            {/* fveAnalysis je nástroj pro interní i zákazníka — proto je
+                v jednom menu pro obě skupiny, ne za podmínkou. */}
+            <Link
+              to="/fve-analysis"
+              className="text-sm font-medium hover:text-antelonGreen transition"
+            >
+              fveAnalysis
+            </Link>
             {showMaterialy && (
               <Link to="/materialy" className="text-sm font-medium hover:text-antelonGreen transition">
                 Materiály

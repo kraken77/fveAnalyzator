@@ -13,6 +13,8 @@ import Dispecink from "./pages/Dispecink";
 import PipelineDetail from "./pages/PipelineDetail";
 import Materialy from "./pages/Materialy";
 import AdminPipeline from "./pages/AdminPipeline";
+import FveAnalysisPage from "./pages/FveAnalysis";
+import ProjectFveAnalysisPage from "./pages/ProjectFveAnalysis";
 
 function ProtectedLayout({
   children,
@@ -90,6 +92,25 @@ export default function App() {
             element={
               <ProtectedLayout>
                 <PipelineDetail />
+              </ProtectedLayout>
+            }
+          />
+
+          {/* fveAnalysis — standalone i uvnitř zakázky. Bez `roles`:
+              dostupné každému přihlášenému, tedy i zákazníkovi. */}
+          <Route
+            path="/fve-analysis"
+            element={
+              <ProtectedLayout>
+                <FveAnalysisPage />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/projects/:id/fve-analysis"
+            element={
+              <ProtectedLayout>
+                <ProjectFveAnalysisPage />
               </ProtectedLayout>
             }
           />

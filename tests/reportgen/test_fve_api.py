@@ -354,6 +354,49 @@ def test_convert_404_on_missing_project(client, admin_token):
     assert r.status_code == 404
 
 
+# ---------- PDF ----------
+
+def test_energy_pdf_returns_pdf(client, admin_token):
+    """Legacy /report/energy je bez /api/v1 a bez auth — client má
+    baseURL=/api/v1, takže potřebujeme vlastní cestu pod prefixem."""
+    result = client.post("/api/v1/fve-analysis/run", json={"kwp": 10.0},
+                         headers=_auth(admin_token)).json()
+    r = client.post("/api/v1/fve-analysis/report/energy", json=result,
+                    headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"] == "application/pdf"
+    assert r.content[:4] == b"%PDF", "odpověď není PDF"
+    assert len(r.content) > 1000, "PDF je podezřele malé"
+    assert "attachment" in r.headers["content-disposition"]
+
+
+def test_energy_pdf_requires_auth(client):
+    """Legacy endpoint je bez auth. Nový nesmí být — kdokoli by si
+    mohl generovat PDF z cizího výsledku analýzy."""
+    r = client.post("/api/v1/fve-analysis/report/energy", json={})
+    assert r.status_code in (401, 422)
+
+
+def test_energy_pdf_customer_allowed(client, customer_token):
+    """Zákazník si analýzu spočítá — chce si ji i stáhnout jako PDF."""
+    result = client.post("/api/v1/fve-analysis/run", json={"kwp": 8.0},
+                         headers=_auth(customer_token)).json()
+    r = client.post("/api/v1/fve-analysis/report/energy", json=result,
+                    headers=_auth(customer_token))
+    assert r.status_code == 200, r.text
+    assert r.content[:4] == b"%PDF"
+
+
+def test_energy_pdf_handles_broken_payload(client, admin_token):
+    """Prázdný payload je chyba uživatele, ne 500 — a nebere to celý server."""
+    r = client.post("/api/v1/fve-analysis/report/energy", json={},
+                    headers=_auth(admin_token))
+    assert r.status_code in (400, 422, 500)
+    # server nezůstal viset
+    assert client.post("/api/v1/fve-analysis/run", json={},
+                       headers=_auth(admin_token)).status_code == 200
+
+
 def test_convert_requires_auth(client):
     r = client.post("/api/v1/projects/1/convert-to-order")
     assert r.status_code in (401, 422)
