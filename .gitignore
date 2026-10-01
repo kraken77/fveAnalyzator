@@ -151,3 +151,6 @@ frontend-web/.env
 docs/superpowers/specs/.tmp/
 backend/data/
 backend/data/*.db
+
+# superpowers: SDD scratch (ledger, briefy) — git-ignored
+.superpowers/
