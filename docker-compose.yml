@@ -25,7 +25,12 @@ services:
       context: ./frontend-web
       dockerfile: Dockerfile
     ports:
+      # WEB_PORT = adresa pro lokální vývoj (default 3000, viz .env.example).
+      # 3001 je natvrdo proto, že na něj míří reverse proxy v etikos-nginx
+      # (server_name fve.etikos.cz -> proxy_pass http://<drakisa>:3001)
+      # a taky deploy.sh healthcheck (WEB_PORT="${WEB_PORT:-3001}").
       - "${WEB_PORT:-3000}:80"
+      - "3001:80"
     depends_on:
       - backend
     environment:
