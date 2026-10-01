@@ -45,7 +45,9 @@ def test_health_endpoint_survives_cleanup(main_app):
     """
     assert main_app.app is not None
     assert callable(main_app.read_root)
-    assert main_app.read_root() == {"message": "fveAnalyzator API"}
+    body = main_app.read_root()
+    assert body["message"] == "fveAnalyzator API"
+    # Stav modulů řeší test_module_loading.py; tady stačí, že health žije.
 
 
 def test_no_legacy_analysis_paths(main_app):

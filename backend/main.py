@@ -18,8 +18,10 @@ chodilo přes Streamlit, ale na rozdíl od `/analysis/*` jsou použitelné
 přes veřejný web až po doplnění skriptů — zahozit je teď by znamenalo
 zapomenout, kam až analýza sahá.
 """
+import logging
 import sqlite3
 import subprocess
+from collections.abc import Callable
 from datetime import datetime
 
 import pandas as pd
@@ -43,27 +45,72 @@ app.add_middleware(
     expose_headers=["Content-Disposition", "X-Filename"],
 )
 
-# ReportGen module. Pozor: oba routery se importují v jednom try — kdyby
-# jeden spadl (chybějící závislost), zmizel by i druhý, a chyba by se
-# vypsala jen do stdout kontejneru, ne do odpovědi. Oba moduly musejí
-# být healthy, aby byl API živý; viz .superpowers ledger (Ruling 4).
-try:
-    from app.reportgen.router import router as reportgen_router
-    from app.reportgen.fve_router import router as fve_router
-    from app.reportgen.storage import init_db as reportgen_init_db
+logger = logging.getLogger("fveanalyzator")
 
-    app.include_router(reportgen_router)
-    app.include_router(fve_router)
-    reportgen_init_db()
-except Exception as e:  # pragma: no cover — závisí na prostředí
-    print(f"ReportGen init failed: {e}")
+# --- ReportGen moduly ---
+#
+# Každý modul se načítá zvlášť a pád jednoho nesmí vzít ostatní. Dřív byly
+# oba routery a inicializace DB v jednom `try`, takže chybějící závislost
+# jednoho umlčela i druhý (jeho import se už vůbec neprovedl) a chyba se
+# vypsala jen přes `print` do stdout kontejneru — v HTTP odpovědi nebylo
+# poznat nic.
+#
+# Stav načtení se hlásí v `GET /`, takže se rozbitá aplikace nehlásí jako
+# zdravá. Detail výjimky jde do logu (s tracebackem), ne do odpovědi —
+# `GET /` je bez autentizace.
+_module_status: dict[str, str] = {}
+
+
+def _load(name: str, loader: Callable[[], None]) -> None:
+    """Načte modul a zapíše výsledek do `_module_status`. Nikdy nevyhodí."""
+    try:
+        loader()
+    except Exception as exc:  # pragma: no cover — závisí na prostředí
+        logger.exception("Modul '%s' se nepodařilo načíst", name)
+        _module_status[name] = f"chyba ({type(exc).__name__})"
+    else:
+        _module_status[name] = "ok"
+
+
+def _load_reportgen_router() -> None:
+    from app.reportgen.router import router
+
+    app.include_router(router)
+
+
+def _load_fve_router() -> None:
+    from app.reportgen.fve_router import router
+
+    app.include_router(router)
+
+
+def _load_reportgen_db() -> None:
+    from app.reportgen.storage import init_db
+
+    init_db()
+
+
+_load("reportgen", _load_reportgen_router)
+_load("fve_analysis", _load_fve_router)
+_load("reportgen_db", _load_reportgen_db)
 
 
 # --- Zdraví aplikace ---
 
 @app.get("/")
 def read_root():
-    return {"message": "fveAnalyzator API"}
+    """Health check včetně stavu načtení modulů.
+
+    Při poruše vrací 503, aby se rozbitá aplikace nehlásila jako zdravá.
+    Detail chyby je jen v logu, ven jde jméno modulu.
+    """
+    broken = sorted(name for name, state in _module_status.items() if state != "ok")
+    if broken:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Moduly v chybě: {', '.join(broken)}",
+        )
+    return {"message": "fveAnalyzator API", "modules": dict(_module_status)}
 
 
 # --- OTE: spotové ceny (odložené, viz docs/architektura.md) ---
