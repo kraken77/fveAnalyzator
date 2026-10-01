@@ -330,8 +330,13 @@ def test_convert_attaches_pipeline(client, admin_token):
 def test_convert_marks_analysis_supplied_steps_done(client, admin_token):
     """Kroky, které analýza fakticky dodala, nesmí čekat na obchodníka.
 
-    Porovnává se název (ID se liší mezi instalacemi). Pokud šablona
-    'ostatni' žádný takový krok nemá, test projde — to není chyba.
+    Porovnává se začátek názvu, ne přesná shoda: v šabloně se krok jmenuje
+    „první indikativní nabídka dle telefonátu - tel/email", takže přesná
+    shoda by nikdy nesedla a funkce by byla mrtvá.
+
+    Test je záměrně ne-vakuový: vyžaduje, aby se alespoň jeden krok
+    skutečně omarkoval. Předtím tady bylo `all()` nad prázdným seznamem,
+    což prošlo vždycky a neověřovalo nic.
     """
     pid = _save(client, admin_token, contact={
         "name": "Kroky Test", "email": "kroky@example.cz",
@@ -340,12 +345,36 @@ def test_convert_marks_analysis_supplied_steps_done(client, admin_token):
                 headers=_auth(admin_token))
     steps = client.get(f"/api/v1/projects/{pid}/pipeline",
                        headers=_auth(admin_token)).json()["steps"]
+
     supplied = ("první indikativní nabídka", "Zjištění roční spotřeby")
-    matched = [s for s in steps if s["name"].strip().lower() in supplied]
+    matched = [s for s in steps
+               if any(s["name"].strip().lower().startswith(w) for w in supplied)]
+
+    assert matched, (
+        "žádný krok se neomarkoval — analýza nedodává nic, funkce je mrtvá. "
+        f"Názvy v šabloně: {[s['name'] for s in steps]}"
+    )
     assert all(s["status"] == "done" for s in matched), \
-        [s for s in matched if s["status"] != "done"]
+        [s["name"] for s in matched if s["status"] != "done"]
     for s in matched:
-        assert "FVE" in (s.get("note") or "")
+        assert "FVE" in (s.get("note") or ""), s["name"]
+
+
+def test_convert_marks_nothing_in_unrelated_step(client, admin_token):
+    """Ostatní kroky zůstanou nedělané — neoznačíme všechno done."""
+    pid = _save(client, admin_token, contact={
+        "name": "Ostatni Test", "email": "ostatni@example.cz",
+        "phone": "+420 777 111 000"}).json()["id"]
+    client.post(f"/api/v1/projects/{pid}/convert-to-order",
+                headers=_auth(admin_token))
+    steps = client.get(f"/api/v1/projects/{pid}/pipeline",
+                       headers=_auth(admin_token)).json()["steps"]
+    done = [s for s in steps if s["status"] == "done"]
+    assert 0 < len(done) < len(steps), (
+        f"označené kroky: {len(done)} z {len(steps)} — buď nic, nebo všechno"
+    )
+    # Montáž analýza nedodává, obchodník ji musí naplánovat sám
+    assert any("Montáž" in s["name"] and s["status"] != "done" for s in steps)
 
 
 def test_convert_404_on_missing_project(client, admin_token):

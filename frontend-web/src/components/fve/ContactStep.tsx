@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { convertToOrder, saveAnalysis } from "../../api/fve";
 import client from "../../api/client";
 import type { FveContact, FveParams, SavedAnalysis } from "../../types";
@@ -93,7 +94,7 @@ export default function ContactStep({ params, projectId, onSaved }: Props) {
 
   if (saved) {
     return (
-      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5 space-y-2">
+      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5 space-y-3">
         <h3 className="font-semibold text-emerald-900">Analýza uložena</h3>
         <p className="text-sm text-emerald-800">
           Kód pro sdílení: <strong>{saved.share_code}</strong>
@@ -104,6 +105,14 @@ export default function ContactStep({ params, projectId, onSaved }: Props) {
             přihlášení.
           </p>
         )}
+        {/* Navigace se nechá na uživateli — dřív tady byla automatická a
+            panel s kódem i hláškou o účtu se nestihl ukázat. */}
+        <Link
+          to={`/projects/${saved.id}`}
+          className="inline-block text-sm text-navy underline"
+        >
+          Pokračovat do zakázky
+        </Link>
       </div>
     );
   }

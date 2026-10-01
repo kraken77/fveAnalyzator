@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { fetchAppliances, runAnalysis } from "../api/fve";
 import { DEFAULT_FVE_PARAMS } from "../api/fve";
 import ContactStep from "../components/fve/ContactStep";
@@ -10,7 +9,6 @@ import type { FveAnalysisResult, FveAppliance, FveParams } from "../types";
 type Tab = "form" | "results" | "contact";
 
 export default function FveAnalysisPage() {
-  const navigate = useNavigate();
   const [params, setParams] = useState<FveParams>(DEFAULT_FVE_PARAMS);
   const [appliances, setAppliances] = useState<FveAppliance[]>([]);
   const [result, setResult] = useState<FveAnalysisResult | null>(null);
@@ -85,12 +83,7 @@ export default function FveAnalysisPage() {
       {tab === "results" && result && <FveAnalysisResults result={result} />}
 
       {tab === "contact" && (
-        <ContactStep
-          params={params}
-          onSaved={(saved) => {
-            if (saved) navigate(`/projects/${saved.id}`);
-          }}
-        />
+        <ContactStep params={params} />
       )}
     </div>
   );

@@ -245,9 +245,13 @@ def save_analysis(payload: SaveAnalysisIn, user: User = Depends(ANY_ROLE),
     }
 
 
-# Kroky šablony, které fveAnalysis fakticky dodává — označíme jako hotové,
-# ať je obchodník nedělá znovu. Řešíme podle názvu, ne ID, protože ID se
-# liší mezi instalacemi.
+# Kroky, které fveAnalysis fakticky dodává — označíme jako hotové, ať je
+# obchodník nedělá znovu.
+#
+# Porovnává se ZAČÁTEK názvu, ne přesná shoda: v šablonách se krok jmenuje
+# „první indikativní nabídka dle telefonátu - tel/email", takže shoda na
+# celý řetězec by nesedla nikdy a funkce by tiše nedělala nic.
+# Řešíme podle názvu, ne ID, protože ID se liší mezi instalacemi.
 ANALYSIS_SUPPLIED_STEPS = ("první indikativní nabídka", "Zjištění roční spotřeby")
 
 
@@ -283,18 +287,23 @@ def convert_to_order(project_id: int, user: User = Depends(ANY_ROLE),
     p.antelon_params_json = json.dumps(antelon, ensure_ascii=False)
 
     p.status = "lead"
-    attach_template(db, p, p.type)
+    # přes mapování, ne p.type přímo — p.type může být hodnota mimo
+    # slovník šablon a bez fallbacku by to skončilo ValueError
+    from .pipeline_seed import TEMPLATE_CODE_BY_TYPE
+
+    attach_template(db, p, TEMPLATE_CODE_BY_TYPE.get(p.type, "ostatni"))
 
     # kroky, které analýza dodala, označ jako hotové s odkazem na zdroj.
     # Název kroku je v pipeline_steps, ne přímo v project_steps — join.
-    wanted = {n.lower() for n in ANALYSIS_SUPPLIED_STEPS}
+    wanted = tuple(n.lower() for n in ANALYSIS_SUPPLIED_STEPS)
     rows = (db.query(ProjectStep, PipelineStep.name)
             .join(PipelineStep, ProjectStep.step_id == PipelineStep.id)
             .filter(ProjectStep.project_id == p.id)
             .all())
     for step, name in rows:
-        if name and name.strip().lower() in wanted:
+        if name and name.strip().lower().startswith(wanted):
             step.status = "done"
+            step.done_at = datetime.utcnow()
             step.note = f"Dodáno FVE analýzou (projekt #{p.id})"
 
     db.commit()
