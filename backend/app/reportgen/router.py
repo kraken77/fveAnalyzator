@@ -70,6 +70,8 @@ def _project_to_dict(p: Project):
         "id": p.id,
         "name": p.name,
         "customer_name": p.customer_name,
+        "customer_email": p.customer_email,
+        "customer_phone": p.customer_phone,
         "description": p.description,
         "owner_id": p.owner_id,
         "share_code": p.share_code,

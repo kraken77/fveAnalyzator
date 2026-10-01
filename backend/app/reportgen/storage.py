@@ -51,13 +51,17 @@ class Project(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
     customer_name = Column(String(255), nullable=True)
+    # Kontakt patří zakázce, ne uživateli: jeden zákazník může mít více
+    # zakázek s různými kontakty (jiná manželka, firma) a users telefon nemá.
+    customer_email = Column(String(255), nullable=True)
+    customer_phone = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     share_code = Column(String(16), unique=True, nullable=False, index=True)
     antelon_params_json = Column(Text, nullable=True)  # JSON string
     fve_params_json = Column(Text, nullable=True)
     type = Column(String(30), nullable=False, default="ostatni")  # zakazka typ (rd, byt, ...)
-    status = Column(String(20), nullable=False, default="lead")   # lead|active|done|cancelled
+    status = Column(String(20), nullable=False, default="lead")   # lead|fve_analyza|active|done|cancelled
     tech = Column(String(255), nullable=True)                     # technologie (string z Excelu)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -302,6 +306,11 @@ def _migrate(engine):
                 conn.execute(text("ALTER TABLE projects ADD COLUMN status VARCHAR(20)"))
             if "tech" not in cols:
                 conn.execute(text("ALTER TABLE projects ADD COLUMN tech VARCHAR(255)"))
+            if "customer_email" not in cols:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN customer_email VARCHAR(255)"))
+            if "customer_phone" not in cols:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN customer_phone VARCHAR(255)"))
+            # zadni sloupce bez backfillu — starych 36 zakazek kontakt proste neni
             conn.execute(text("UPDATE projects SET type = 'ostatni' WHERE type IS NULL OR type = ''"))
             conn.execute(text("UPDATE projects SET status = 'lead' WHERE status IS NULL OR status = ''"))
 
