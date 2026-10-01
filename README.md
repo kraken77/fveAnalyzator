@@ -212,15 +212,22 @@ Podrobnosti v [docs/architektura.md](docs/architektura.md#ote--spotové-ceny).
 Testy jsou **pytest + FastAPI `TestClient`**, ne E2E. Frontendu chybí
 test framework — jeho bránkou je `npm run build` (`tsc -b && vite build`).
 
+Pozor: build **nepozná**, že se graf v prohlížeči nevykreslí. Plotly je
+ořezaný na jen použité typy grafů (viz
+[docs/architektura.md](docs/architektura.md#plotly-partial-bundle)), což je
+tichý failure mód. Změny v grafech se proto musí ověřit v prohlížeči;
+registraci typů hlídá `tests/test_plotly_traces.py`.
+
 ```bash
 # venv
 source venv/bin/activate
 
-# všechny testy (~4 minuty, 143 testů)
+# všechny testy (~4 minuty, 154 testů)
 pytest tests/
 
 # jen rychlé testy API a úklidu
-pytest tests/reportgen/test_fve_api.py tests/reportgen/test_legacy_removal.py
+pytest tests/reportgen/test_fve_api.py tests/reportgen/test_legacy_removal.py \
+  tests/reportgen/test_module_loading.py tests/test_plotly_traces.py
 ```
 
 Testy nepotřebují běžící aplikaci ani síť a nesahají na vývojovou

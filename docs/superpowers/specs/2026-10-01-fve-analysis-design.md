@@ -27,6 +27,17 @@
 >
 > `/ote/*` zůstalo odložené (chybějí skripty). Aktuální stav systému je
 > v [docs/architektura.md](../../architektura.md).
+>
+> Dvě věci k tomu dodatečně (2026-10-01):
+>
+> - **Plotly** se v této verzi používal jako `plotly.js-dist-min` přes
+>   dynamický import. Byl nahrazen ořezaným bundle
+>   (`plotly.js/lib/core` + registrace jen použitých typů), 4,6 MB →
+>   1,29 MB. Vyžaduje `define: { global: 'globalThis' }` ve
+>   `vite.config.ts`; registraci typů hlídá `tests/test_plotly_traces.py`.
+> - **`main.py`** už nemá oba reportgen routery v jednom `try` (Ruling 4):
+>   každý modul se načítá zvlášť, chyba jde do `logger.exception()` a stav
+>   hlásí `GET /` (503 při poruše).
 
 ## 1. Cíl
 

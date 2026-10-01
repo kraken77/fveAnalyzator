@@ -17,6 +17,16 @@
 > - `fve_analysis.analysis_param_keys()` nahrazuje
 >   `EnergyAnalysisInput.model_fields` jako filtrační klíče.
 >
+> Navíc (2026-10-01, po dokončení):
+>
+> - Úkol **M6.1** mluví o `plotly.js-dist-min`. Ten byl nahrazen ořezaným
+>   bundle z `plotly.js/lib/core` + ruční registrace použitých typů grafů
+>   (`frontend-web/src/lib/plotly.ts`), 4,6 MB → 1,29 MB. Vyžaduje
+>   `define: { global: 'globalThis' }` ve `vite.config.ts`.
+> - Slibná poznámka v sekci o `main.py` (Ruling 4 — oba routery v jednom
+>   `try`) je **opravená**, ne odložená: moduly se načítají zvlášť a stav
+>   hlásí `GET /` (503 při poruše).
+>
 > Změnu shrnuje
 > [spec, sekce Změna 2026-10-01](../specs/2026-10-01-fve-analysis-design.md)
 > a [docs/architektura.md](../../architektura.md).

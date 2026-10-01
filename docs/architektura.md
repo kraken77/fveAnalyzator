@@ -272,23 +272,32 @@ Neexistuje. Parametry se ukládají jako `Project` — to je i cesta, kterou
 se analýza dostane do pipeline. Stahování `.json` jako souboru není
 součástí aplikace.
 
-### `main.py` importuje oba reportgen routery v jednom `try`
+### Načítání reportgen modulů v `main.py`
 
-```python
-try:
-    from app.reportgen.router import router as reportgen_router
-    from app.reportgen.fve_router import router as fve_router
-    ...
-except Exception as e:
-    print(f"ReportGen init failed: {e}")
+Oba routery a inicializace DB se načítají **každý zvlášť** — přes
+pomocník `_load()`, který výsledek zapíše do `_module_status`. Dřív byly
+v jednom `try` s `print(f"ReportGen init failed: {e}")`, což mělo dvě
+vady:
+
+1. Chybějící závislost jednoho routeru umlčela i druhý (jeho import se
+   už vůbec neprovedl) — API přišlo o půlku cest.
+2. `print` jde do stdout kontejneru bez úrovně a bez jména loggeru, takže
+   se ztratil mezi přístupovými logy. Z HTTP odpovědi nebylo poznat nic.
+
+Tak se to projevilo, když chyběla závislost `email-validator`: vypadalo
+to jako „API neexistuje“, přičemž příčina byla jinde.
+
+Dnes pád jednoho modulu ostatní nechá běžet, chyba jde do
+`logger.exception()` s tracebackem a stav je vidět v `GET /`:
+
+```json
+{"message": "fveAnalyzator API",
+ "modules": {"reportgen": "ok", "fve_analysis": "ok", "reportgen_db": "ok"}}
 ```
 
-Když spadne jeden, zmizí **oba** — a chyba se vyjede jen do stdout
-kontejneru, ne do odpovědi ani do logu s úrovní. Tak se to projevilo,
-když chyběla závislost `email-validator`: vypadalo to jako „API neexistuje“,
-přičemž příčina byla jinde. Oprava je rozdělit na dva `try` bloky.
-Zapsáno jako Ruling 4 v `.superpowers/sdd/2026-10-01-fve-analysis/progress.md`;
-záměrně neprovedeno, protože je mimo rozsah této práce.
+Při poruše vrací `/` **503**, aby se rozbitá aplikace nehlásila jako
+zdravá. Ven jde jen jméno modulu — detail výjimky zůstává v logu, protože
+health check je bez autentizace. Hlídá to `test_module_loading.py`.
 
 ### Reportgen routery v `main.py`
 
@@ -306,7 +315,7 @@ Neexistuje. Heslo jde změnit přes `PUT /api/v1/admin/users/{id}`.
 ## Testy
 
 ```bash
-pytest tests/            # 143 testů, ~4 minuty
+pytest tests/            # 154 testů, ~4 minuty
 ```
 
 **Pytest + FastAPI `TestClient`, žádný E2E framework.** Playwright je v
@@ -335,6 +344,8 @@ Testy navíc musí používat souřadnice z `weather_cache.db` (50.0880 /
 | `test_fve_api.py` | Všech 7 endpointů, včetně převodu na zakázku |
 | `test_project_contact.py` | Migrace sloupců kontaktu a model |
 | `test_legacy_removal.py` | Co po úklidu zbylo, co zmizelo, a že OTE zůstal |
+| `test_module_loading.py` | Izolace načítání reportgen modulů a health check (503 při poruše) |
+| `test_plotly_traces.py` | Že frontend registruje každý typ grafu, který backend generuje |
 | `test_ai.py` | AI kroky pipeline (fve_size, battery, subsidy, loan, nabídka) |
 | `test_hardening.py` | Autorizace, izolace projektů, branice v pipeline |
 | `test_economy.py`, `test_workflow.py`, `test_import.py`, `test_models.py`, `test_m5_admin_api.py` | Ekonomika, workflow, import dispečinku, modely, admin API |
@@ -351,10 +362,39 @@ Fronta nemá test framework — gate je `npm run build` (`tsc -b && vite build`)
 | `src/components/fve/FveAnalysisForm.tsx` | Formulář parametrů |
 | `src/components/fve/FveAnalysisResults.tsx` | Výsledky a grafy |
 | `src/components/fve/ContactStep.tsx` | Sběr kontaktu před uložením |
-| `src/components/PlotlyChart.tsx` | Plotly — `pio.to_json()` vrací **řetězec**, takže se `JSON.parse()`uje |
+| `src/components/fve/PlotlyChart.tsx` | Plotly — `pio.to_json()` vrací **řetězec**, takže se `JSON.parse()`uje |
+| `src/lib/plotly.ts` | Partial bundle Plotly — registruje **jen použité typy grafů** (viz níže) |
 | `src/pages/FveAnalysis.tsx` | `/fve-analysis` (samostatně) |
 | `src/pages/ProjectFveAnalysis.tsx` | `/projects/{id}/fve-analysis` (v rámci zakázky) |
 
 `FveAnalysisForm`, `FveAnalysisResults` a `ContactStep` jsou sdílené
 oběma routami. `ContactStep` v režimu „v rámci zakázky“ zapisuje jen
 `fve_params` a `contact_*` — **nikdy** nepřepisuje `Project.name`.
+
+### Plotly: partial bundle
+
+Backend vyrábí grafy jako Plotly JSON. Frontend je kreslí přes
+`src/lib/plotly.ts`, což **není** plný Plotly, ale bundle složený z
+`plotly.js/lib/core` s ruční registrací jen použitých typů:
+
+| Typ grafu | Odkud |
+|---|---|
+| `scatter` | `core` — jediný trace, který se nedá vyndat |
+| `bar`, `pie`, `treemap`, `sunburst`, `calendars` | explicitní `Plotly.register([...])` |
+
+Plný `plotly.js-dist-min` je 4,6 MB (1,4 MB gzip) a obsahuje 3D, mapy a
+WebGL, které nepoužíváme. Ořezaný bundle má 1,29 MB (442 kB gzip), tedy
+o ~72 % méně. Načítá se dynamicky, takže neblokuje první vykreslení.
+
+Cena je **tichý failure mód**: chybějící trace modul neudělá chybu buildu
+(`tsc -b` ani `vite build` nic nehlásí, v TypeScriptu je typ grafu jen
+string) — graf se prostě nevykreslí a chyba je jen v konzoli prohlížeče.
+Když backend začne generovat nový typ grafu, musí se přidat do
+`Plotly.register([...])`. Hlídá to `tests/test_plotly_traces.py`, který
+čte `visualizer.py` a porovnává ho s registrací.
+
+Druhá past: zdrojový `plotly.js/lib/*` (narozdíl od `-dist-min`) sahá na
+Node globál `global`. V prohlížeči spadne na `ReferenceError: global is
+not defined` — a to až za běhu. Řeší to `define: { global: 'globalThis' }`
+ve `vite.config.ts`. **Obojí se musí ověřit v prohlížeči**; build ani
+testy TypeScriptu tyhle chyby nezachytí.
