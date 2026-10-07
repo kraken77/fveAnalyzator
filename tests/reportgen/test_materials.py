@@ -129,3 +129,65 @@ def test_derive_qty_defaults_kwp_to_ten():
     from reportgen.materials_service import derive_qty
 
     assert derive_qty("panel", 550, {}) == 19
+
+
+# ---------- set_material_price / current_price ----------
+
+def _new_material(db):
+    from reportgen.storage import Material
+
+    m = Material(code="X-PRICE", name="Cenověný", unit="ks", price=0)
+    db.add(m)
+    db.commit()
+    db.refresh(m)
+    return m
+
+
+def test_set_material_price_updates_denormalized_price(db):
+    from datetime import date
+
+    from reportgen.materials_service import current_price, set_material_price
+
+    m = _new_material(db)
+    set_material_price(db, m.id, 100.0, date(2026, 1, 1), created_by=None)
+    db.commit()
+    assert current_price(db, m.id, date(2026, 6, 1)) == 100.0
+
+    set_material_price(db, m.id, 130.0, date(2026, 7, 1), created_by=None)
+    db.commit()
+    assert current_price(db, m.id, date(2026, 6, 1)) == 100.0   # stará cena do 30. 6.
+    assert current_price(db, m.id, date(2026, 7, 1)) == 130.0
+    db.refresh(m)
+    assert m.price == 130.0
+
+
+def test_set_material_price_closes_previous_open_row(db):
+    from datetime import date
+
+    from reportgen.storage import MaterialPrice
+    from reportgen.materials_service import set_material_price
+
+    m = _new_material(db)
+    set_material_price(db, m.id, 100.0, date(2026, 1, 1))
+    set_material_price(db, m.id, 130.0, date(2026, 7, 1))
+    db.commit()
+
+    rows = (db.query(MaterialPrice)
+            .filter(MaterialPrice.material_id == m.id)
+            .order_by(MaterialPrice.valid_from).all())
+    assert len(rows) == 2
+    assert rows[0].price == 100.0 and rows[0].valid_to == date(2026, 6, 30)
+    assert rows[1].price == 130.0 and rows[1].valid_to is None
+    assert sum(1 for r in rows if r.valid_to is None) == 1
+
+
+def test_set_material_price_same_day_reprice_wins(db):
+    from datetime import date
+
+    from reportgen.materials_service import current_price, set_material_price
+
+    m = _new_material(db)
+    set_material_price(db, m.id, 100.0, date(2026, 1, 1))
+    set_material_price(db, m.id, 150.0, date(2026, 1, 1))
+    db.commit()
+    assert current_price(db, m.id, date(2026, 1, 1)) == 150.0
