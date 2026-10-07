@@ -455,3 +455,58 @@ def test_save_after_delete_reuses_ids_without_collision(client, admin_token, db_
 
     second = _save(client, admin_token, contact=contact)
     assert second.status_code == 200, second.text
+
+
+# ---------- RBAC: buyer smí uložit, převod jen admin/antelon/sales ----------
+
+def _add_user(db_path, email, role):
+    """Vytvoří uživatele přímo v DB — API na vytvoření uživatele neexistuje."""
+    import json
+    import sqlite3
+    from reportgen.auth import hash_password
+
+    con = sqlite3.connect(db_path)
+    try:
+        con.execute(
+            "INSERT INTO users (email, password_hash, role, roles_json) "
+            "VALUES (?, ?, ?, ?)",
+            (email, hash_password("Xx123456!"), role, json.dumps([role])))
+        con.commit()
+    finally:
+        con.close()
+
+
+def test_buyer_can_save_analysis(client, admin_token, db_path):
+    _add_user(db_path, "buyer1@test.local", "buyer")
+    token = _login(client, "buyer1@test.local", "Xx123456!")
+    r = _save(client, token, contact={
+        "name": "Kupující", "email": "kupujici@example.cz",
+        "phone": "+420777123456"})
+    assert r.status_code == 200, r.text
+
+
+def test_buyer_cannot_convert_to_order(client, admin_token, db_path):
+    r = _save(client, admin_token, contact={
+        "name": "Ke Konverzi", "email": "kkonverze@example.cz",
+        "phone": "+420777123456"})
+    assert r.status_code == 200, r.text
+    pid = r.json()["id"]
+
+    _add_user(db_path, "buyer@test.local", "buyer")
+    token = _login(client, "buyer@test.local", "Xx123456!")
+    r = client.post(f"/api/v1/projects/{pid}/convert-to-order",
+                    headers=_auth(token))
+    assert r.status_code == 403, r.text
+
+
+def test_sales_can_convert_to_order(client, admin_token, db_path):
+    _add_user(db_path, "sales@test.local", "sales")
+    token = _login(client, "sales@test.local", "Xx123456!")
+
+    pid = _save(client, admin_token, contact={
+        "name": "Prodejce", "email": "prodej@example.cz",
+        "phone": "+420777123456"}).json()["id"]
+
+    r = client.post(f"/api/v1/projects/{pid}/convert-to-order",
+                    headers=_auth(token))
+    assert r.status_code == 200, r.text

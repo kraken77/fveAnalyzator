@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { convertToOrder, saveAnalysis } from "../../api/fve";
 import client from "../../api/client";
+import { hasAnyRole, useAuth } from "../../context/AuthContext";
 import type { FveContact, FveParams, SavedAnalysis } from "../../types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,6 +30,8 @@ interface Props {
 }
 
 export default function ContactStep({ params, projectId, onSaved }: Props) {
+  const { user } = useAuth();
+  const canConvert = hasAnyRole(user, ["admin", "antelon", "sales"]);
   const inProject = projectId !== undefined;
 
   const [contact, setContact] = useState<FveContact>({ name: "", email: "", phone: "" });
@@ -193,7 +196,7 @@ export default function ContactStep({ params, projectId, onSaved }: Props) {
         >
           {saving === "draft" ? "Ukládám…" : "Uložit jako rozpracovanou analýzu"}
         </button>
-        {!inProject && (
+        {!inProject && canConvert && (
           <button
             type="button"
             onClick={() => submit(true)}

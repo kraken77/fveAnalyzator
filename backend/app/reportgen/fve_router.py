@@ -18,7 +18,6 @@ from .auth import (
     can_access_project,
     get_current_user,
     hash_password,
-    is_internal_user,
     require_roles,
 )
 from .storage import (
@@ -34,7 +33,7 @@ from .storage import (
 router = APIRouter(prefix="/api/v1", tags=["fve-analysis"])
 
 # Analýzu smí spočítat i zákazník — je to nástroj, ne interní proces.
-ANY_ROLE = require_roles("admin", "antelon", "customer")
+ANY_ROLE = require_roles("admin", "antelon", "customer", "buyer")
 
 
 class FveParams(BaseModel):
@@ -256,17 +255,16 @@ ANALYSIS_SUPPLIED_STEPS = ("první indikativní nabídka", "Zjištění roční 
 
 
 @router.post("/projects/{project_id}/convert-to-order")
-def convert_to_order(project_id: int, user: User = Depends(ANY_ROLE),
-                     db: Session = Depends(get_db)):
+def convert_to_order(
+        project_id: int,
+        user: User = Depends(require_roles("admin", "antelon", "sales")),
+        db: Session = Depends(get_db)):
     """Převede rozpracovanou analýzu na zakázku: fve_analyza → lead.
 
-    Pouze admin/antelon — je to obchodní rozhodnutí, zákazník svou analýzu
-    převést nemůže.
+    Pouze admin/antelon/sales — je to obchodní rozhodnutí a odpovídá
+    pipeline_seed.ALLOWED_LEAD. Zákazník ani buyer analýzu převést nemůže.
     """
     from .pipeline_seed import attach_template
-
-    if not is_internal_user(user):
-        raise HTTPException(403, "Na převod na zakázku nemáte oprávnění")
 
     p = db.query(Project).filter(Project.id == project_id,
                                  Project.active.is_(True)).first()
