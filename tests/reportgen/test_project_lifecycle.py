@@ -54,6 +54,34 @@ def _orphan_counts(db_path):
     return counts
 
 
+def test_delete_project_deactivates(client, admin_token, db_path):
+    """DELETE nesmí projekt smazat — jen deaktivovat.
+
+    Tvrdé mazání by zničilo invoice_items, time_entries a pdf_versions
+    (fakturační a docházkové záznamy) a navíc uvolnilo ID, které by znovu
+    kolidovalo v project_users.
+    """
+    r = client.post("/api/v1/fve-analysis", json={
+        "params": {"kwp": 10.0},
+        "contact": {"name": "Smaž Mě", "email": "smaz@example.cz",
+                    "phone": "+420777111222"},
+    }, headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    pid = r.json()["id"]
+
+    r = client.delete(f"/api/v1/projects/{pid}", headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+
+    con = sqlite3.connect(db_path)
+    try:
+        row = con.execute("SELECT active FROM projects WHERE id = ?",
+                          (pid,)).fetchone()
+    finally:
+        con.close()
+    assert row is not None, "řádek projektu musí zůstat v DB"
+    assert row[0] == 0
+
+
 def test_migrate_sweeps_orphans(db_path):
     """Sirotci v project_users i project_steps zmizí při dalším init_db."""
     st.init_db(db_path)

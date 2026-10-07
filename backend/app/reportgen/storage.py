@@ -65,6 +65,7 @@ class Project(Base):
     tech = Column(String(255), nullable=True)                     # technologie (string z Excelu)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    active = Column(Boolean, nullable=False, default=True, server_default=text("1"))
 
 class ProjectUser(Base):
     __tablename__ = "project_users"
@@ -310,6 +311,10 @@ def _migrate(engine):
                 conn.execute(text("ALTER TABLE projects ADD COLUMN customer_email VARCHAR(255)"))
             if "customer_phone" not in cols:
                 conn.execute(text("ALTER TABLE projects ADD COLUMN customer_phone VARCHAR(255)"))
+            if "active" not in cols:
+                # NOT NULL + konstantní default je v SQLite povolený ADD COLUMN
+                conn.execute(text(
+                    "ALTER TABLE projects ADD COLUMN active BOOLEAN NOT NULL DEFAULT 1"))
             # zadni sloupce bez backfillu — starych 36 zakazek kontakt proste neni
             conn.execute(text("UPDATE projects SET type = 'ostatni' WHERE type IS NULL OR type = ''"))
             conn.execute(text("UPDATE projects SET status = 'lead' WHERE status IS NULL OR status = ''"))

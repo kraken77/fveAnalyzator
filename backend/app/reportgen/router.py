@@ -77,6 +77,7 @@ def _project_to_dict(p: Project):
         "share_code": p.share_code,
         "type": p.type,
         "status": p.status,
+        "active": p.active,
         "tech": p.tech,
         "antelon_params": json.loads(p.antelon_params_json) if p.antelon_params_json else {},
         "fve_params": json.loads(p.fve_params_json) if p.fve_params_json else {},
@@ -223,10 +224,17 @@ def update_project(project_id: int, data: ProjectUpdate, user: User = Depends(ge
 
 @router.delete("/projects/{project_id}")
 def delete_project(project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Měkké smazání: active=0. Projekt zmizí ze seznamů, ale zůstane v DB.
+
+    Tvrdé mazání by smazalo fakturační a docházkové záznamy (invoice_items,
+    time_entries, pdf_versions). Navíc by uvolnilo ID projektu a další INSERT
+    do project_users by narazil na UNIQUE (project_id, user_id).
+    """
     p = _ensure_project_access(project_id, user, db)
     if not (user.has_role("admin") or user.has_role("antelon")):
         raise HTTPException(403, "Jen Antelon může mazat")
-    db.delete(p)
+    p.active = False
+    p.updated_at = datetime.utcnow()
     db.commit()
     return {"status": "ok"}
 
