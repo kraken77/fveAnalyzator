@@ -375,7 +375,8 @@ def create_share(project_id: int, user: User = Depends(get_current_user), db: Se
 @router.post("/public/join")
 def public_join(data: PublicJoinIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     code = data.code.strip().upper()
-    p = db.query(Project).filter(Project.share_code == code).first()
+    p = db.query(Project).filter(Project.share_code == code,
+                                 Project.active.is_(True)).first()
     if not p:
         raise HTTPException(404, "Kód neexistuje")
     # add user to project
@@ -388,7 +389,8 @@ def public_join(data: PublicJoinIn, user: User = Depends(get_current_user), db: 
 @router.get("/public/p/{code}")
 def public_preview(code: str, db: Session = Depends(get_db), user: Optional[User] = Depends(get_current_user_optional)):
     code = code.strip().upper()
-    p = db.query(Project).filter(Project.share_code == code).first()
+    p = db.query(Project).filter(Project.share_code == code,
+                                 Project.active.is_(True)).first()
     if not p:
         raise HTTPException(404, "Projekt nenalezen")
     antelon_params = json.loads(p.antelon_params_json) if p.antelon_params_json else {}

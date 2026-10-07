@@ -268,7 +268,8 @@ def convert_to_order(project_id: int, user: User = Depends(ANY_ROLE),
     if not is_internal_user(user):
         raise HTTPException(403, "Na převod na zakázku nemáte oprávnění")
 
-    p = db.query(Project).filter(Project.id == project_id).first()
+    p = db.query(Project).filter(Project.id == project_id,
+                                 Project.active.is_(True)).first()
     if not p:
         raise HTTPException(404, "Projekt nenalezen")
     if not can_access_project(user, p, db):

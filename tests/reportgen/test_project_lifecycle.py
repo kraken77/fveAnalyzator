@@ -201,3 +201,32 @@ def test_deactivated_project_hidden_from_customer(client, admin_token,
 
     assert all(p["id"] != pid for p in
                client.get("/api/v1/projects", headers=_auth(customer_token)).json())
+
+
+def _share_code(client, token, pid):
+    r = client.get(f"/api/v1/projects/{pid}", headers=_auth(token))
+    assert r.status_code == 200, r.text
+    return r.json()["share_code"]
+
+
+def test_deleted_project_share_code_is_404(client, admin_token):
+    """share_code lookupy NEJDOU přes _ensure_project_access — musí filtrovat samy."""
+    pid = _saved_project(client, admin_token, email="sdileny@example.cz")
+    code = _share_code(client, admin_token, pid)
+    client.delete(f"/api/v1/projects/{pid}", headers=_auth(admin_token))
+
+    r = client.get(f"/api/v1/public/p/{code}")
+    assert r.status_code == 404, r.text
+
+    r = client.post("/api/v1/public/join", json={"code": code},
+                    headers=_auth(admin_token))
+    assert r.status_code == 404, r.text
+
+
+def test_convert_to_order_rejects_deleted_project(client, admin_token):
+    pid = _saved_project(client, admin_token, email="konvert@example.cz")
+    client.delete(f"/api/v1/projects/{pid}", headers=_auth(admin_token))
+
+    r = client.post(f"/api/v1/projects/{pid}/convert-to-order",
+                    headers=_auth(admin_token))
+    assert r.status_code == 404, r.text
