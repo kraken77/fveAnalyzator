@@ -192,9 +192,11 @@ def step_admin(project_id: int, step_id: int, data: AdminIn,
     ps = _get_project_step(db, project_id, step_id)
 
     if data.action == "remove_step":
+        from .storage import StepEvent, detach_step_materials
         db.query(Notification).filter(Notification.step_id == ps.id).delete()
-        from .storage import StepEvent
         db.query(StepEvent).filter(StepEvent.step_id == ps.id).delete()
+        # materiály patří projektu — jen uvolníme vazbu na rušený krok
+        detach_step_materials(db, ps.id)
         db.delete(ps)
         db.commit()
         return {"status": "removed"}

@@ -370,6 +370,17 @@ def _seed_rate_cards(db):
         db.commit()
 
 
+def detach_step_materials(db, step_id: int) -> None:
+    """Uvolní vazbu materiálů na rušený krok.
+
+    `project_materials.step_id` je nullable a řádek materiálu patří projektu,
+    ne kroku — vazba se tedy jen uvolní a evidence zůstává. Bez toho by po
+    smazání kroku zůstal sirotek.
+    """
+    db.query(ProjectMaterial).filter(ProjectMaterial.step_id == step_id).update(
+        {ProjectMaterial.step_id: None}, synchronize_session=False)
+
+
 def _seed_settings(db):
     if db.query(Setting).filter(Setting.key == "margin").first() is None:
         db.add(Setting(key="margin", value="0.30"))

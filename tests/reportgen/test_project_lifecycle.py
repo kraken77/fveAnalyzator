@@ -230,3 +230,38 @@ def test_convert_to_order_rejects_deleted_project(client, admin_token):
     r = client.post(f"/api/v1/projects/{pid}/convert-to-order",
                     headers=_auth(admin_token))
     assert r.status_code == 404, r.text
+
+
+def test_detach_step_materials_keeps_material_row(db_path):
+    """Smazání kroku nesmí nechat project_materials.step_id odkazovat do prázdna.
+
+    `project_materials.step_id` je nullable a řádek materiálu patří projektu,
+    takže se vazba jen uvolní — evidence materiálu zůstává.
+    """
+    st.init_db(db_path)
+    Session = st.get_session_factory(db_path)
+    with Session() as s:
+        p = st.Project(name="P", customer_name="X", status="lead",
+                       type="ostatni", share_code="RMSTEP01")
+        m = st.Material(code="M-1", name="Materiál", unit="ks", price=100)
+        s.add_all([p, m])
+        s.commit()
+        s.refresh(p)
+        s.refresh(m)
+        step = st.ProjectStep(project_id=p.id, step_id=1, status="not_started")
+        s.add(step)
+        s.commit()
+        s.refresh(step)
+        pm = st.ProjectMaterial(project_id=p.id, material_id=m.id,
+                                step_id=step.id, qty_planned=2)
+        s.add(pm)
+        s.commit()
+        pm_id = pm.id
+        step_row_id = step.id
+
+        st.detach_step_materials(s, step_row_id)
+        s.commit()
+
+        row = s.get(st.ProjectMaterial, pm_id)
+        assert row is not None, "materiál se nesmí smazat"
+        assert row.step_id is None
