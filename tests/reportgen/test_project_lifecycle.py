@@ -31,6 +31,11 @@ def admin_token(client):
     return _login(client, "admin@test.local", "Admin123!")
 
 
+@pytest.fixture
+def customer_token(client):
+    return _login(client, "zakaznik@test.local", "Zakaznik123!")
+
+
 def _orphan_counts(db_path):
     """Vrátí {tabulka: počet} sirotčích ŘÁDKŮ s neexistujícím rodičem.
 
@@ -138,3 +143,61 @@ def test_init_db_on_fresh_path_does_not_crash(tmp_path):
         assert con.execute("PRAGMA foreign_key_check").fetchall() == []
     finally:
         con.close()
+
+
+def _saved_project(client, token, email="seznam@example.cz", name="Test"):
+    r = client.post("/api/v1/fve-analysis", json={
+        "params": {"kwp": 10.0},
+        "contact": {"name": name, "email": email, "phone": "+420777123456"},
+    }, headers=_auth(token))
+    assert r.status_code == 200, r.text
+    return r.json()["id"]
+
+
+def test_deactivated_project_disappears_from_list(client, admin_token):
+    pid = _saved_project(client, admin_token)
+    listed = client.get("/api/v1/projects", headers=_auth(admin_token)).json()
+    assert any(p["id"] == pid for p in listed)
+
+    client.delete(f"/api/v1/projects/{pid}", headers=_auth(admin_token))
+
+    listed = client.get("/api/v1/projects", headers=_auth(admin_token)).json()
+    assert all(p["id"] != pid for p in listed)
+
+
+def test_deactivated_project_detail_is_404(client, admin_token):
+    pid = _saved_project(client, admin_token, email="detail@example.cz")
+    client.delete(f"/api/v1/projects/{pid}", headers=_auth(admin_token))
+
+    r = client.get(f"/api/v1/projects/{pid}", headers=_auth(admin_token))
+    assert r.status_code == 404, r.text
+
+
+def test_deactivated_project_hidden_from_customer(client, admin_token,
+                                                   customer_token, db_path):
+    """Zákazník vidí svůj projekt přes project_users — i tam musí filtr platit.
+
+    Kontaktní e-mail analyzuje `EmailStr`, který odmítá rezervovanou doménu
+    `.local` (konfigurační e-mail zákazníka v conftest). Vazbu zákazník↔projekt
+    proto založíme přímo v `project_users`, stejně jako to dělá produkční
+    `POST /fve-analysis`.
+    """
+    pid = _saved_project(client, admin_token, email="zakaznik@example.cz",
+                         name="Zákazníkův")
+    con = sqlite3.connect(db_path)
+    try:
+        uid = con.execute("SELECT id FROM users WHERE email = ?",
+                          ("zakaznik@test.local",)).fetchone()[0]
+        con.execute("INSERT INTO project_users (project_id, user_id) "
+                    "VALUES (?, ?)", (pid, uid))
+        con.commit()
+    finally:
+        con.close()
+
+    assert any(p["id"] == pid for p in
+               client.get("/api/v1/projects", headers=_auth(customer_token)).json())
+
+    client.delete(f"/api/v1/projects/{pid}", headers=_auth(admin_token))
+
+    assert all(p["id"] != pid for p in
+               client.get("/api/v1/projects", headers=_auth(customer_token)).json())

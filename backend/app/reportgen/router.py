@@ -86,7 +86,8 @@ def _project_to_dict(p: Project):
     }
 
 def _ensure_project_access(project_id: int, user, db: Session):
-    p = db.query(Project).filter(Project.id == project_id).first()
+    p = db.query(Project).filter(Project.id == project_id,
+                                 Project.active.is_(True)).first()
     if not p:
         raise HTTPException(404, "Projekt nenalezen")
     # admin/antelon + interní role je možno vše; customer jen owner/link
@@ -159,12 +160,17 @@ def me(user: User = Depends(get_current_user)):
 @router.get("/projects")
 def list_projects(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if is_principal(user) or is_internal_user(user):
-        projects = db.query(Project).order_by(Project.updated_at.desc()).all()
+        projects = (db.query(Project)
+                    .filter(Project.active.is_(True))
+                    .order_by(Project.updated_at.desc()).all())
     else:
         # customer: owned + shared
-        owned = db.query(Project).filter(Project.owner_id == user.id).all()
+        owned = db.query(Project).filter(Project.owner_id == user.id,
+                                         Project.active.is_(True)).all()
         shared_ids = [r.project_id for r in db.query(ProjectUser).filter(ProjectUser.user_id == user.id).all()]
-        shared = db.query(Project).filter(Project.id.in_(shared_ids)).all() if shared_ids else []
+        shared = (db.query(Project)
+                  .filter(Project.id.in_(shared_ids), Project.active.is_(True)).all()
+                  if shared_ids else [])
         # deduplicate
         seen = set()
         projects = []
