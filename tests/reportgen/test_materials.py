@@ -88,3 +88,44 @@ def test_migrate_adds_material_columns(db_path):
     for c in ("category", "visibility", "rating", "supplier", "is_default",
               "system_kwp", "system_battery_kwh"):
         assert c in cols, f"chybí sloupec materials.{c}"
+
+
+# ---------- derive_qty ----------
+
+def test_derive_qty_panel_rounds_up():
+    from reportgen.materials_service import derive_qty
+
+    assert derive_qty("panel", 550, {"kwp": 10.0}) == 19   # ceil(18.18)
+    assert derive_qty("panel", 450, {"kwp": 10.0}) == 23   # ceil(22.22)
+    assert derive_qty("panel", 615, {"kwp": 10.0}) == 17   # ceil(16.26)
+
+
+def test_derive_qty_inverter_and_battery():
+    from reportgen.materials_service import derive_qty
+
+    assert derive_qty("inverter", 10, {"kwp": 10.0}) == 1
+    assert derive_qty("inverter", 10, {"kwp": 15.0}) == 2
+    assert derive_qty("battery", 10, {"kwp": 10.0, "battery_capacity": 10.0}) == 1
+    assert derive_qty("battery", 5, {"kwp": 10.0, "battery_capacity": 12.0}) == 3
+
+
+def test_derive_qty_install_system_other_is_one():
+    from reportgen.materials_service import derive_qty
+
+    assert derive_qty("install", None, {}) == 1
+    assert derive_qty("system", None, {}) == 1
+    assert derive_qty("other", None, {}) == 1
+
+
+def test_derive_qty_missing_rating_is_zero():
+    from reportgen.materials_service import derive_qty
+
+    assert derive_qty("panel", None, {"kwp": 10.0}) == 0
+    assert derive_qty("inverter", None, {"kwp": 10.0}) == 0
+    assert derive_qty("battery", None, {"battery_capacity": 10.0}) == 0
+
+
+def test_derive_qty_defaults_kwp_to_ten():
+    from reportgen.materials_service import derive_qty
+
+    assert derive_qty("panel", 550, {}) == 19
