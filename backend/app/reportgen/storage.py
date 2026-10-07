@@ -2,7 +2,7 @@ import os
 import json
 import secrets
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Text, Float, DateTime, Date, ForeignKey, Boolean, UniqueConstraint, text
+from sqlalchemy import create_engine, Column, Integer, String, Text, Float, DateTime, Date, ForeignKey, Boolean, UniqueConstraint, text, bindparam
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 Base = declarative_base()
@@ -318,6 +318,28 @@ def _migrate(engine):
             cols = columns_of("notifications")
             if "step_id" not in cols:
                 conn.execute(text("ALTER TABLE notifications ADD COLUMN step_id INTEGER"))
+
+        # --- Úklid sirotků -------------------------------------------------
+        # SQLite má `PRAGMA foreign_keys` defaultně OFF (backend ho nikde
+        # nezapíná), takže `ON DELETE CASCADE` na project_users nikdy nevyplní
+        # a `delete_project` nechával řádky odkazující do prázdna. Ty pak
+        # blokovaly save_analysis na UNIQUE (project_id, user_id):
+        # projects MAX(id)=36 a users MAX(id)=6 -> další INSERT byl přesně
+        # sirotek (37, 7). Mažeme VÝHRADNĚ to, co foreign_key_check označí
+        # za porušené — nic jiného.
+        orphan_rows = conn.execute(text("PRAGMA foreign_key_check")).fetchall()
+        if orphan_rows:
+            by_table: dict = {}
+            for row in orphan_rows:        # (table, rowid, parent, fkid)
+                by_table.setdefault(row[0], set()).add(row[1])
+            for table, rowids in by_table.items():
+                # název tabulky pochází z DB, ne od uživatele — stejně ověř
+                if not table.isidentifier():
+                    continue
+                stmt = text(
+                    f"DELETE FROM {table} WHERE rowid IN :rowids"
+                ).bindparams(bindparam("rowids", expanding=True))
+                conn.execute(stmt, {"rowids": sorted(rowids)})
 
         conn.commit()
     finally:
