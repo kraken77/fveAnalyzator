@@ -1,8 +1,8 @@
 import os
 import json
 import secrets
-from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Text, Float, DateTime, Date, ForeignKey, Boolean, UniqueConstraint, text, bindparam
+from datetime import datetime, date
+from sqlalchemy import create_engine, Column, Integer, String, Text, Float, DateTime, Date, ForeignKey, Boolean, UniqueConstraint, Index, text, bindparam
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 Base = declarative_base()
@@ -190,8 +190,17 @@ class Material(Base):
     code = Column(String(50), unique=True, nullable=False, index=True)
     name = Column(String(200), nullable=False)
     unit = Column(String(10), default="ks")
-    price = Column(Float, default=0)
+    price = Column(Float, default=0)          # denormalizovaná AKTUÁLNÍ cena
     active = Column(Boolean, default=True)
+    # panel | inverter | battery | install | system | other
+    category = Column(String(30), default="other", server_default=text("'other'"))
+    # public = vidí zákazník, internal = jen pracovníci
+    visibility = Column(String(20), default="public", server_default=text("'public'"))
+    rating = Column(Float, nullable=True)     # Wp u panelů, kW u měničů, kWh u baterií
+    supplier = Column(String(120), nullable=True)  # konkrétní typ dodavatele
+    is_default = Column(Boolean, default=False, server_default=text("0"))
+    system_kwp = Column(Float, nullable=True)            # jen category='system'
+    system_battery_kwh = Column(Float, nullable=True)    # jen category='system'
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class ProjectMaterial(Base):
@@ -205,6 +214,25 @@ class ProjectMaterial(Base):
     lane = Column(String(20), default="plan")  # plan|order|issue|actual
     step_id = Column(Integer, ForeignKey("project_steps.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class MaterialPrice(Base):
+    """Historie cen materiálu. Aktuální cena = nejnovější platný řádek.
+
+    Do této tabulky i do `Material.price` smí zapisovat jen
+    `materials_service.set_material_price`.
+    """
+    __tablename__ = "material_prices"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    material_id = Column(Integer, ForeignKey("materials.id", ondelete="CASCADE"),
+                         nullable=False, index=True)
+    price = Column(Float, nullable=False)
+    valid_from = Column(Date, nullable=False)
+    valid_to = Column(Date, nullable=True)     # NULL = stále platí
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    __table_args__ = (
+        Index("ix_material_prices_material_valid", "material_id", "valid_from"),
+    )
 
 class TimeEntry(Base):
     __tablename__ = "time_entries"
@@ -323,6 +351,23 @@ def _migrate(engine):
             cols = columns_of("notifications")
             if "step_id" not in cols:
                 conn.execute(text("ALTER TABLE notifications ADD COLUMN step_id INTEGER"))
+
+        if "materials" in tables:
+            cols = columns_of("materials")
+            if "category" not in cols:
+                conn.execute(text("ALTER TABLE materials ADD COLUMN category VARCHAR(30) DEFAULT 'other'"))
+            if "visibility" not in cols:
+                conn.execute(text("ALTER TABLE materials ADD COLUMN visibility VARCHAR(20) DEFAULT 'public'"))
+            if "rating" not in cols:
+                conn.execute(text("ALTER TABLE materials ADD COLUMN rating FLOAT"))
+            if "supplier" not in cols:
+                conn.execute(text("ALTER TABLE materials ADD COLUMN supplier VARCHAR(120)"))
+            if "is_default" not in cols:
+                conn.execute(text("ALTER TABLE materials ADD COLUMN is_default BOOLEAN DEFAULT 0"))
+            if "system_kwp" not in cols:
+                conn.execute(text("ALTER TABLE materials ADD COLUMN system_kwp FLOAT"))
+            if "system_battery_kwh" not in cols:
+                conn.execute(text("ALTER TABLE materials ADD COLUMN system_battery_kwh FLOAT"))
 
         # --- Úklid sirotků -------------------------------------------------
         # SQLite má `PRAGMA foreign_keys` defaultně OFF (backend ho nikde
