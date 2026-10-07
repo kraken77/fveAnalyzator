@@ -4,6 +4,8 @@ Autentizace jako v test_m5_admin_api.py: prihlaseni pres /api/v1/auth/login.
 """
 import pytest
 
+from reportgen import storage as st
+
 
 def _auth(token):
     return {"Authorization": f"Bearer {token}"}
@@ -429,3 +431,27 @@ def test_energy_pdf_handles_broken_payload(client, admin_token):
 def test_convert_requires_auth(client):
     r = client.post("/api/v1/projects/1/convert-to-order")
     assert r.status_code in (401, 422)
+
+
+def test_save_after_delete_reuses_ids_without_collision(client, admin_token, db_path):
+    """Bod 1: uložit -> smazat -> znovu uložit (stejný zákazník) musí projít.
+
+    Před opravou: smazání nechalo sirotky v project_users; další projekt dostal
+    stejné id jako smazaný a stejný zákazník (stejný e-mail -> stejné user_id)
+    -> UNIQUE constraint failed: project_users.project_id, project_users.user_id.
+    Restart init_db mezi smazáním a dalším uložením spustí sweep z Tasku 1.
+    """
+    contact = {"name": "První", "email": "opakovany@example.cz",
+               "phone": "+420777111222"}
+    first = _save(client, admin_token, contact=contact)
+    assert first.status_code == 200, first.text
+    pid = first.json()["id"]
+
+    r = client.delete(f"/api/v1/projects/{pid}", headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+
+    # Restart init_db spustí sweep sirotků z Tasku 1.
+    st.init_db(db_path)
+
+    second = _save(client, admin_token, contact=contact)
+    assert second.status_code == 200, second.text
