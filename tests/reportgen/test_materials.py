@@ -281,3 +281,56 @@ def test_compute_investment_cost_legacy_fallback():
     assert compute_investment_cost({}) == 350000.0
     # prázdný snímek NENÍ nula — spadne na explicitní/legacy
     assert compute_investment_cost({"fve_materials": []}) == 350000.0
+
+# ---------- GET /fve-analysis/materials ----------
+
+def _insert_material(db_path, code, name, price=100.0, visibility="public",
+                     category="other", rating=None):
+    """Vloží materiál přímo do DB — testuje endpoint nezávisle na CRUD (Task 7)."""
+    con = sqlite3.connect(db_path)
+    try:
+        con.execute(
+            "INSERT INTO materials (code, name, unit, price, active, category, "
+            "visibility, rating, is_default) VALUES (?, ?, 'ks', ?, 1, ?, ?, ?, 0)",
+            (code, name, price, category, visibility, rating))
+        mid = con.execute("SELECT id FROM materials WHERE code = ?", (code,)).fetchone()[0]
+        con.commit()
+    finally:
+        con.close()
+    return mid
+
+
+def test_fve_materials_customer_sees_only_public(client, admin_token, customer_token, db_path):
+    _insert_material(db_path, "X-PUB", "Veřejný", visibility="public")
+    _insert_material(db_path, "X-INT", "Interní", visibility="internal")
+
+    adm = {m["code"] for m in client.get("/api/v1/fve-analysis/materials",
+                                         headers=_auth(admin_token)).json()["materials"]}
+    cus = {m["code"] for m in client.get("/api/v1/fve-analysis/materials",
+                                         headers=_auth(customer_token)).json()["materials"]}
+    assert {"X-PUB", "X-INT"} <= adm
+    assert "X-PUB" in cus
+    assert "X-INT" not in cus
+
+
+def test_fve_materials_excludes_inactive(client, admin_token, db_path):
+    mid = _insert_material(db_path, "X-OFF", "Vypnutý")
+    con = sqlite3.connect(db_path)
+    try:
+        con.execute("UPDATE materials SET active = 0 WHERE id = ?", (mid,))
+        con.commit()
+    finally:
+        con.close()
+    codes = {m["code"] for m in client.get("/api/v1/fve-analysis/materials",
+                                           headers=_auth(admin_token)).json()["materials"]}
+    assert "X-OFF" not in codes
+
+
+def test_fve_materials_response_shape(client, admin_token):
+    rows = client.get("/api/v1/fve-analysis/materials",
+                      headers=_auth(admin_token)).json()["materials"]
+    assert rows, "seed musí nabídnout materiály"
+    assert set(rows[0].keys()) == {
+        "id", "code", "name", "category", "visibility", "rating", "unit",
+        "price", "is_default", "system_kwp", "system_battery_kwh",
+    }

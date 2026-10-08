@@ -18,6 +18,7 @@ from .auth import (
     can_access_project,
     get_current_user,
     hash_password,
+    is_internal_user,
     require_roles,
 )
 from .storage import (
@@ -155,6 +156,28 @@ def list_appliances(user: User = Depends(ANY_ROLE)):
     from app.fve_analysis import appliance_catalog
 
     return {"appliances": appliance_catalog()}
+
+
+@router.get("/fve-analysis/materials")
+def fve_materials(user: User = Depends(ANY_ROLE), db: Session = Depends(get_db)):
+    """Katalog pro přepínač sestavy FVE formuláře.
+
+    Interní pracovník vidí i `visibility='internal'`, zákazník jen
+    `'public'`. Smazané (active=0) se nenabízejí.
+    """
+    from .storage import Material
+
+    q = db.query(Material).filter(Material.active.is_(True))
+    if not is_internal_user(user):
+        q = q.filter(Material.visibility == "public")
+    rows = q.order_by(Material.category, Material.code).all()
+    return {"materials": [
+        {"id": m.id, "code": m.code, "name": m.name, "category": m.category,
+         "visibility": m.visibility, "rating": m.rating, "unit": m.unit,
+         "price": m.price, "is_default": m.is_default,
+         "system_kwp": m.system_kwp, "system_battery_kwh": m.system_battery_kwh}
+        for m in rows
+    ]}
 
 
 @router.post("/fve-analysis/economic")
