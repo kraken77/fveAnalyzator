@@ -130,3 +130,32 @@ def test_report_survives_chart_failure():
                side_effect=RuntimeError("no chrome")):
         pdf = ReportGenerator().generate_energy_report(_energy_data())
     assert pdf[:4] == b"%PDF"
+
+
+def _render(data, economic=None):
+    """Postaví kontext a vyrenderuje šablonu — bez WeasyPrint."""
+    gen = ReportGenerator()
+    with patch("app.reporting.pio.to_image", return_value=b"PNG"):
+        ctx = gen._build_context(data, economic)
+    return gen.env.get_template("energy_report.html").render(ctx)
+
+
+def test_template_has_economic_section_and_appendices_when_economic():
+    html = _render(_energy_data(), _economic())
+    for text in ("Ekonomická analýza", "Příloha A", "Příloha B",
+                 "Příloha C", "Příloha D", "Ekonomický plán",
+                 "Složení investice", "300 000 Kč", "Panel 550 Wp"):
+        assert text in html, f"v PDF chybí: {text}"
+
+
+def test_template_omits_economic_section_without_economic():
+    html = _render(_energy_data(), None)
+    for text in ("Ekonomická analýza", "Příloha A", "Příloha B",
+                 "Příloha C", "Příloha D"):
+        assert text not in html, f"bez ekonomiky nemá být v PDF: {text}"
+
+
+def test_appendix_headings_break_to_new_page():
+    """Přílohy musí začínat na vlastní stránce (WeasyPrint break-before)."""
+    html = _render(_energy_data(), _economic())
+    assert html.count("break-before: page") >= 4

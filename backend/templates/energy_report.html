@@ -5,7 +5,7 @@
 
 {% block content %}
 
-<!-- Summary Section -->
+<!-- 1. Summary Section -->
 <div class="summary-box">
     <h2>Souhrnné Výsledky</h2>
     <div class="metric">
@@ -22,32 +22,17 @@
     </div>
 </div>
 
-<!-- Parameters Section -->
+<!-- 2. Parameters Section -->
 <h2>Vstupní Parametry</h2>
 <table>
-    <tr>
-        <th>Parametr</th>
-        <th>Hodnota</th>
-    </tr>
-    <tr>
-        <td>Výkon FVE</td>
-        <td>{{ kwp }} kWp</td>
-    </tr>
-    <tr>
-        <td>Kapacita Baterie</td>
-        <td>{{ battery_capacity }} kWh</td>
-    </tr>
-    <tr>
-        <td>Roční Spotřeba</td>
-        <td>{{ annual_consumption }} MWh</td>
-    </tr>
-    <tr>
-        <td>Lokalita (Lat/Lon)</td>
-        <td>{{ latitude }} / {{ longitude }}</td>
-    </tr>
+    <tr><th>Parametr</th><th>Hodnota</th></tr>
+    <tr><td>Výkon FVE</td><td>{{ kwp }} kWp</td></tr>
+    <tr><td>Kapacita Baterie</td><td>{{ battery_capacity }} kWh</td></tr>
+    <tr><td>Roční Spotřeba</td><td>{{ annual_consumption }} MWh</td></tr>
+    <tr><td>Lokalita (Lat/Lon)</td><td>{{ latitude }} / {{ longitude }}</td></tr>
 </table>
 
-<!-- Monthly Stats Chart -->
+<!-- 3. Monthly Stats Chart -->
 {% if chart_monthly_stats %}
 <div class="chart-container">
     <h3>Měsíční Statistika Výroby a Spotřeby</h3>
@@ -55,7 +40,7 @@
 </div>
 {% endif %}
 
-<!-- Energy Balance Section -->
+<!-- 4. Energy Balance Section -->
 <h2>Energetická Bilance</h2>
 <table>
     <thead>
@@ -89,9 +74,6 @@
     </tbody>
 </table>
 
-<div class="page-break"></div>
-
-<!-- Energy and Savings Composition -->
 <div style="display: table; width: 100%; margin-top: 20px;">
     <div style="display: table-row;">
         <div style="display: table-cell; width: 50%; padding-right: 10px;">
@@ -116,7 +98,7 @@
 <div style="display: table; width: 100%; margin-top: 20px;">
     <div style="display: table-row;">
         <div style="display: table-cell; width: 50%; padding-right: 10px;">
-            <h3 style="text-align: center;">Složení Úspor (Treemap)</h3>
+            <h3 style="text-align: center;">Využití Výroby — Úspory (Treemap)</h3>
             {% if chart_savings_treemap %}
             <div class="chart-container">
                 <img src="data:image/png;base64,{{ chart_savings_treemap }}" class="chart-img">
@@ -124,7 +106,7 @@
             {% endif %}
         </div>
         <div style="display: table-cell; width: 50%; padding-left: 10px;">
-            <h3 style="text-align: center;">Složení Úspor (Podíl)</h3>
+            <h3 style="text-align: center;">Úspory (Podíl)</h3>
             {% if chart_savings_pie %}
             <div class="chart-container">
                 <img src="data:image/png;base64,{{ chart_savings_pie }}" class="chart-img">
@@ -134,44 +116,7 @@
     </div>
 </div>
 
-<!-- Appliance Breakdown (Annual) -->
-{% if appliance_metrics %}
-<h2>Detail Spotřebičů (ročně)</h2>
-<table style="font-size: 0.75em;">
-    <thead>
-        <tr>
-            <th>Spotřebič</th>
-            <th class="text-right">Úspora (Kč)</th>
-            <th class="text-right">Cena ze sítě (Kč)</th>
-            <th class="text-right">Vlastní spotřeba (kWh)</th>
-            <th class="text-right">FVE (kWh)</th>
-            <th class="text-right">Ze sítě (kWh)</th>
-            <th class="text-right">Celkem (kWh)</th>
-            <th class="text-right">Pokrytí (%)</th>
-            <th class="text-right">Provoz (h/r)</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for app in appliance_metrics %}
-        <tr {% if app.name=='CELKEM' %}style="background-color: #e9ecef; font-weight: bold;" {% elif
-            app.name=='Základní chod' %}style="background-color: #f1f1f1;" {% endif %}>
-            <td><strong>{{ app.name }}</strong><br /><small>{{ app.description if app.description else '' }}</small>
-            </td>
-            <td class="text-right">{{ app.savings_czk }}</td>
-            <td class="text-right">{{ app.grid_cost_czk }}</td>
-            <td class="text-right">{{ app.fve_kwh }}</td>
-            <td class="text-right">{{ app.fve_kwh }}</td>
-            <td class="text-right">{{ app.grid_kwh }}</td>
-            <td class="text-right">{{ app.total_kwh }}</td>
-            <td class="text-right">{{ app.coverage_pct }}%</td>
-            <td class="text-right">{{ app.operating_hours }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% endif %}
-
-<!-- Monthly Summary -->
+<!-- 5. Monthly Summary -->
 {% if monthly_summary %}
 <h2>Měsíční Bilance</h2>
 <table style="font-size: 0.85em;">
@@ -202,45 +147,7 @@
 </table>
 {% endif %}
 
-<!-- Appliance Monthly Summary -->
-{% if appliance_monthly_summary %}
-<h2>Měsíční bilance spotřebičů (kWh)</h2>
-<table style="font-size: 0.7em;">
-    <thead>
-        <tr>
-            <th>Měsíc</th>
-            <th>Spotřebič</th>
-            <th class="text-right">Úspora (Kč)</th>
-            <th class="text-right">Cena ze sítě (Kč)</th>
-            <th class="text-right">Vlastní spotřeba (kWh)</th>
-            <th class="text-right">FVE (kWh)</th>
-            <th class="text-right">Ze sítě (kWh)</th>
-            <th class="text-right">Celkem (kWh)</th>
-            <th class="text-right">Pokrytí (%)</th>
-            <th class="text-right">Provoz (h/m)</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for row in appliance_monthly_summary %}
-        <tr {% if row.appliance=='CELKEM' %}style="background-color: #e9ecef; font-weight: bold;" {% elif
-            row.appliance=='Základní chod' %}style="background-color: #f9f9f9;" {% endif %}>
-            <td>{{ row.month }}</td>
-            <td><strong>{{ row.appliance }}</strong></td>
-            <td class="text-right">{{ row.savings_czk|round(1) }}</td>
-            <td class="text-right">{{ row.grid_cost_czk|round(1) }}</td>
-            <td class="text-right">{{ row.fve_kWh|round(1) }}</td>
-            <td class="text-right">{{ row.fve_kWh|round(1) }}</td>
-            <td class="text-right">{{ row.grid_kWh|round(1) }}</td>
-            <td class="text-right">{{ row.total_kWh|round(1) }}</td>
-            <td class="text-right">{{ row.coverage_pct|round(1) }}%</td>
-            <td class="text-right">{{ row.operating_hours }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% endif %}
-
-<!-- Recommendations Section -->
+<!-- 6. Recommendations Section -->
 {% if recommendations %}
 <div style="page-break-before: always;"></div>
 <h2>Doporučené strategie a scénáře</h2>
@@ -253,9 +160,131 @@
 </div>
 {% endif %}
 
-<!-- Appliance Definitions Section -->
+{% if economic %}
+<!-- 7. Ekonomická analýza -->
+<div style="break-before: page;"></div>
+<h2>Ekonomická analýza</h2>
+<table>
+    <thead>
+        <tr><th>Metrika</th><th class="text-right">Hodnota</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Investice</td><td class="text-right">{{ investment_cost_czk }}</td></tr>
+        <tr><td>Návratnost</td><td class="text-right">{{ econ_payback }} let</td></tr>
+        <tr><td>Diskontovaná návratnost</td><td class="text-right">{{ econ_dpp }} let</td></tr>
+        <tr><td>Čistá současná hodnota (NPV)</td><td class="text-right">{{ econ_npv }}</td></tr>
+        <tr><td>Výnos FVE</td><td class="text-right">{{ econ_final_pv_gain }}</td></tr>
+        <tr><td>Výnos FVE s reinvesticí</td><td class="text-right">{{ econ_final_pv_reinvest_gain }}</td></tr>
+        <tr><td>Výnos S&amp;P500 (netto)</td><td class="text-right">{{ econ_final_sp500_net }}</td></tr>
+    </tbody>
+</table>
+
+{% if chart_investment %}
+<div class="chart-container">
+    <h3>Investice vs S&amp;P500</h3>
+    <img src="data:image/png;base64,{{ chart_investment }}" class="chart-img">
+</div>
+{% endif %}
+
+<h3>Složení investice</h3>
+<table style="font-size: 0.85em;">
+    <thead>
+        <tr>
+            <th>Komponenta</th>
+            <th class="text-right">Výkon</th>
+            <th class="text-right">Počet</th>
+            <th class="text-right">Cena/ks</th>
+            <th class="text-right">Celkem</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in investment_breakdown %}
+        <tr>
+            <td>{{ row.name }}</td>
+            <td class="text-right">{{ row.rating }}</td>
+            <td class="text-right">{{ row.qty }}</td>
+            <td class="text-right">{{ row.unit_price }}</td>
+            <td class="text-right">{{ row.line_total }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="highlight">
+            <td colspan="4"><strong>CELKEM</strong></td>
+            <td class="text-right"><strong>{{ investment_cost_czk }}</strong></td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- Příloha A -->
+<h2 style="break-before: page;">Příloha A — Detail Spotřebičů (ročně)</h2>
+{% if appliance_metrics %}
+<table style="font-size: 0.75em;">
+    <thead>
+        <tr>
+            <th>Spotřebič</th>
+            <th class="text-right">Úspora (Kč)</th>
+            <th class="text-right">Cena ze sítě (Kč)</th>
+            <th class="text-right">Z FVE (kWh)</th>
+            <th class="text-right">Ze sítě (kWh)</th>
+            <th class="text-right">Celkem (kWh)</th>
+            <th class="text-right">Pokrytí (%)</th>
+            <th class="text-right">Provoz (h/r)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for app in appliance_metrics %}
+        <tr {% if app.name=='CELKEM' %}style="background-color: #e9ecef; font-weight: bold;" {% elif app.name=='Základní chod' %}style="background-color: #f1f1f1;" {% endif %}>
+            <td><strong>{{ app.name }}</strong><br /><small>{{ app.description if app.description else '' }}</small></td>
+            <td class="text-right">{{ app.savings_czk }}</td>
+            <td class="text-right">{{ app.grid_cost_czk }}</td>
+            <td class="text-right">{{ app.fve_kwh }}</td>
+            <td class="text-right">{{ app.grid_kwh }}</td>
+            <td class="text-right">{{ app.total_kwh }}</td>
+            <td class="text-right">{{ app.coverage_pct }}%</td>
+            <td class="text-right">{{ app.operating_hours }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- Příloha B -->
+<h2 style="break-before: page;">Příloha B — Měsíční bilance spotřebičů (kWh)</h2>
+{% if appliance_monthly_summary %}
+<table style="font-size: 0.7em;">
+    <thead>
+        <tr>
+            <th>Měsíc</th>
+            <th>Spotřebič</th>
+            <th class="text-right">Úspora (Kč)</th>
+            <th class="text-right">Cena ze sítě (Kč)</th>
+            <th class="text-right">Z FVE (kWh)</th>
+            <th class="text-right">Ze sítě (kWh)</th>
+            <th class="text-right">Celkem (kWh)</th>
+            <th class="text-right">Pokrytí (%)</th>
+            <th class="text-right">Provoz (h/m)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in appliance_monthly_summary %}
+        <tr {% if row.appliance=='CELKEM' %}style="background-color: #e9ecef; font-weight: bold;" {% elif row.appliance=='Základní chod' %}style="background-color: #f9f9f9;" {% endif %}>
+            <td>{{ row.month }}</td>
+            <td><strong>{{ row.appliance }}</strong></td>
+            <td class="text-right">{{ row.savings_czk|round(1) }}</td>
+            <td class="text-right">{{ row.grid_cost_czk|round(1) }}</td>
+            <td class="text-right">{{ row.fve_kWh|round(1) }}</td>
+            <td class="text-right">{{ row.grid_kWh|round(1) }}</td>
+            <td class="text-right">{{ row.total_kWh|round(1) }}</td>
+            <td class="text-right">{{ row.coverage_pct|round(1) }}%</td>
+            <td class="text-right">{{ row.operating_hours }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- Příloha C -->
+<h2 style="break-before: page;">Příloha C — Detail nastavení spotřebičů</h2>
 {% if appliance_definitions %}
-<h2>Detail Nastavení Spotřebičů</h2>
 <table style="font-size: 0.8em;">
     <thead>
         <tr>
@@ -278,7 +307,34 @@
 </table>
 {% endif %}
 
-
-
+<!-- Příloha D -->
+<h2 style="break-before: page;">Příloha D — Ekonomický plán po jednotlivých letech</h2>
+{% if economic_year_rows %}
+<table style="font-size: 0.75em;">
+    <thead>
+        <tr>
+            <th>Rok</th>
+            <th class="text-right">Kumul. cash flow (Kč)</th>
+            <th class="text-right">Reinvestice (Kč)</th>
+            <th class="text-right">Diskont. kumul. CF (Kč)</th>
+            <th class="text-right">S&amp;P500 hodnota (Kč)</th>
+            <th class="text-right">S&amp;P500 netto (Kč)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in economic_year_rows %}
+        <tr>
+            <td>{{ row.year }}</td>
+            <td class="text-right">{{ row.pv_cumulative_cashflow }}</td>
+            <td class="text-right">{{ row.pv_reinvest_net_result }}</td>
+            <td class="text-right">{{ row.pv_cumulative_dcf }}</td>
+            <td class="text-right">{{ row.sp500_total_value }}</td>
+            <td class="text-right">{{ row.sp500_net_result }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endif %}
 
 {% endblock %}
