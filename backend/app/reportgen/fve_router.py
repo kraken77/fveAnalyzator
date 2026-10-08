@@ -6,6 +6,7 @@ samostatná funkční oblast.
 Výpočet deleguje do app.fve_analysis — tady je jen auth, validace a DB.
 """
 import json
+import logging
 import secrets
 from datetime import datetime
 
@@ -32,6 +33,8 @@ from .storage import (
 )
 
 router = APIRouter(prefix="/api/v1", tags=["fve-analysis"])
+
+logger = logging.getLogger(__name__)
 
 # Analýzu smí spočítat i zákazník — je to nástroj, ne interní proces.
 ANY_ROLE = require_roles("admin", "antelon", "customer", "buyer")
@@ -205,18 +208,25 @@ def run_economic(params: dict, user: User = Depends(ANY_ROLE)):
 
 
 @router.post("/fve-analysis/report/energy")
-def energy_pdf(result: dict, user: User = Depends(ANY_ROLE)):
-    """PDF energetické analýzy. Reuse legacy generátor, ale pod /api/v1
-    a s auth — legacy /report/energy je bez obou a client má
-    baseURL=/api/v1, takže by se netrefil."""
+def energy_pdf(payload: dict, user: User = Depends(ANY_ROLE)):
+    """PDF energetické i ekonomické analýzy.
+
+    Payload: {"energy": {...}, "economic": {...} | null}. Ekonomika je
+    volitelná — když chybí, PDF sekci Ekonomická analýza i Přílohy A–D
+    vynechá. Legacy /report/energy je bez /api/v1 a bez auth.
+    """
     from app.reporting import ReportGenerator
 
-    if not result or "energy_balance_kwh" not in result:
+    energy = (payload or {}).get("energy")
+    economic = (payload or {}).get("economic")
+    if not energy or "energy_balance_kwh" not in energy:
         raise HTTPException(400, "Chybí výsledek analýzy")
     try:
-        pdf_bytes = ReportGenerator().generate_energy_report(result)
+        pdf_bytes = ReportGenerator().generate_energy_report(energy, economic)
     except Exception as e:
-        raise HTTPException(500, f"PDF se nepodařilo vygenerovat: {e}")
+        logger.exception("Generování PDF selhalo: %s", type(e).__name__)
+        raise HTTPException(
+            500, f"PDF se nepodařilo vygenerovat: {type(e).__name__}")
     fname = f"fve_energy_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
     return Response(
         content=pdf_bytes, media_type="application/pdf",

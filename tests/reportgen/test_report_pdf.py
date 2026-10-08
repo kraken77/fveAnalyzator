@@ -159,3 +159,16 @@ def test_appendix_headings_break_to_new_page():
     """Přílohy musí začínat na vlastní stránce (WeasyPrint break-before)."""
     html = _render(_energy_data(), _economic())
     assert html.count("break-before: page") >= 4
+
+
+def test_chart_failure_is_logged_with_type(caplog):
+    """Chyba grafu musí být v logu s typem výjimky, ne prázdná hláška.
+
+    Před opravou se logovalo přes `print(f"...: {e}")`, a když `str(e)`
+    začínalo dvěma `\n`, v logu zůstala prázdná hláška.
+    """
+    with patch("app.reporting.pio.to_image",
+               side_effect=RuntimeError("no chrome")):
+        with caplog.at_level(logging.ERROR):
+            ReportGenerator().generate_energy_report(_energy_data())
+    assert "RuntimeError" in caplog.text

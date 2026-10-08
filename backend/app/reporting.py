@@ -1,3 +1,4 @@
+import logging
 import os
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
@@ -7,6 +8,8 @@ import base64
 import json
 import pandas as pd
 from .appliance_manager import ApplianceManager
+
+logger = logging.getLogger(__name__)
 
 class ReportGenerator:
     def __init__(self, templates_dir="templates"):
@@ -54,7 +57,8 @@ class ReportGenerator:
                     img_bytes = pio.to_image(fig, format="png")
                     charts_b64[key] = base64.b64encode(img_bytes).decode("utf-8")
                 except Exception as e:
-                    print(f"Error generating plot {key}: {e}")
+                    logger.error("Graf '%s' se nevykreslil: %s",
+                                 key, type(e).__name__, exc_info=True)
 
         if economic and economic.get("plot"):
             try:
@@ -63,7 +67,8 @@ class ReportGenerator:
                 img_bytes = pio.to_image(fig, format="png")
                 charts_b64["investment"] = base64.b64encode(img_bytes).decode("utf-8")
             except Exception as e:
-                print(f"Error generating investment plot: {e}")
+                logger.error("Investiční graf se nevykreslil: %s",
+                             type(e).__name__, exc_info=True)
 
         context = {
             "generation_date": datetime.now().strftime("%d.%m.%Y %H:%M"),

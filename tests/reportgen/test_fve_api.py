@@ -395,7 +395,8 @@ def test_energy_pdf_returns_pdf(client, admin_token):
     baseURL=/api/v1, takže potřebujeme vlastní cestu pod prefixem."""
     result = client.post("/api/v1/fve-analysis/run", json={"kwp": 10.0},
                          headers=_auth(admin_token)).json()
-    r = client.post("/api/v1/fve-analysis/report/energy", json=result,
+    r = client.post("/api/v1/fve-analysis/report/energy",
+                    json={"energy": result, "economic": None},
                     headers=_auth(admin_token))
     assert r.status_code == 200, r.text
     assert r.headers["content-type"] == "application/pdf"
@@ -415,7 +416,8 @@ def test_energy_pdf_customer_allowed(client, customer_token):
     """Zákazník si analýzu spočítá — chce si ji i stáhnout jako PDF."""
     result = client.post("/api/v1/fve-analysis/run", json={"kwp": 8.0},
                          headers=_auth(customer_token)).json()
-    r = client.post("/api/v1/fve-analysis/report/energy", json=result,
+    r = client.post("/api/v1/fve-analysis/report/energy",
+                    json={"energy": result, "economic": None},
                     headers=_auth(customer_token))
     assert r.status_code == 200, r.text
     assert r.content[:4] == b"%PDF"
@@ -601,3 +603,41 @@ def test_save_defaults_bom_mode_to_components(client, admin_token):
                       headers=_auth(admin_token)).json()
     assert proj["fve_params"]["bom_mode"] == "components"
     assert proj["fve_params"]["fve_materials"] == []
+
+
+def test_energy_pdf_with_economic_contains_economics(client, admin_token):
+    """Ekonomika v payloadu → PDF obsahuje její sekci (kontrola přes log-free cestu)."""
+    result = client.post("/api/v1/fve-analysis/run", json={"kwp": 10.0},
+                         headers=_auth(admin_token)).json()
+    economic = client.post("/api/v1/fve-analysis/economic",
+                           json={"annual_savings": 25000.0},
+                           headers=_auth(admin_token)).json()
+    r = client.post("/api/v1/fve-analysis/report/energy",
+                    json={"energy": result, "economic": economic},
+                    headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    assert r.content[:4] == b"%PDF"
+
+
+def test_energy_pdf_missing_energy_is_400(client, admin_token):
+    r = client.post("/api/v1/fve-analysis/report/energy",
+                    json={"energy": None, "economic": None},
+                    headers=_auth(admin_token))
+    assert r.status_code == 400
+
+
+def test_energy_pdf_logs_exception_type(client, admin_token, caplog):
+    """Selhání generátoru musí být v logu i v hlášce s typem výjimky."""
+    import logging
+    from unittest.mock import patch
+
+    with patch("app.reporting.ReportGenerator.generate_energy_report",
+               side_effect=RuntimeError("boom")):
+        with caplog.at_level(logging.ERROR):
+            r = client.post(
+                "/api/v1/fve-analysis/report/energy",
+                json={"energy": {"energy_balance_kwh": {}}, "economic": None},
+                headers=_auth(admin_token))
+    assert r.status_code == 500
+    assert "RuntimeError" in r.json()["detail"]
+    assert "RuntimeError" in caplog.text
