@@ -27,81 +27,86 @@ class ReportGenerator:
         if value is None: return "-"
         return f"{value:,.{decimal}f}".replace(",", " ")
 
-    def generate_energy_report(self, data):
+    def _build_context(self, data, economic=None):
+        """Postaví Jinja kontext pro energy_report.html.
+
+        Oddělené od vykreslení (WeasyPrint), aby šel kontext testovat
+        bez Chrome/kaleida — `plotly.io.to_image` se v testech mockuje.
+        `economic` je volitelný; bez něj se ekonomická sekce i přílohy
+        A–D vynechají (chování jako dřív).
         """
-        Generates PDF for Energy + Economic analysis.
-        data: Dictionary with all necessary result variables from /analysis/energy.
-        """
-        # Load figures from JSON plots in results
         plots_json = data.get("plots", {})
         charts_b64 = {}
-        
-        # Load figures from JSON plots in results
-        plots_json = data.get("plots", {})
-        charts_b64 = {}
-        
+
         plot_mapping = {
             "monthly_stats": "monthly_stats",
             "energy_treemap": "energy_treemap",
             "savings_treemap": "savings_treemap",
             "energy_pie": "energy_pie",
-            "savings_pie": "savings_pie"
+            "savings_pie": "savings_pie",
         }
-        
         for key, plot_id in plot_mapping.items():
             if plot_id in plots_json:
                 try:
                     fig = pio.from_json(plots_json[plot_id])
-                    # Optimize for PDF
-                    fig.update_layout(template="plotly_white", width=800, height=450)
+                    fig.update_layout(template="plotly_white",
+                                      width=800, height=450)
                     img_bytes = pio.to_image(fig, format="png")
-                    charts_b64[key] = base64.b64encode(img_bytes).decode('utf-8')
+                    charts_b64[key] = base64.b64encode(img_bytes).decode("utf-8")
                 except Exception as e:
                     print(f"Error generating plot {key}: {e}")
 
-        # Investment Chart (optional, if provided in 'plot' key from economic analysis)
-        if "plot" in data:
-             try:
-                fig = pio.from_json(data["plot"])
+        if economic and economic.get("plot"):
+            try:
+                fig = pio.from_json(economic["plot"])
                 fig.update_layout(template="plotly_white", width=800, height=450)
                 img_bytes = pio.to_image(fig, format="png")
-                charts_b64["investment"] = base64.b64encode(img_bytes).decode('utf-8')
-             except Exception as e:
+                charts_b64["investment"] = base64.b64encode(img_bytes).decode("utf-8")
+            except Exception as e:
                 print(f"Error generating investment plot: {e}")
 
-        template = self.env.get_template("energy_report.html")
-        
-        # Helper variables logic
         context = {
             "generation_date": datetime.now().strftime("%d.%m.%Y %H:%M"),
             "kwp": data.get("kwp", 0.0),
             "battery_capacity": data.get("battery_capacity", 0.0),
             "annual_consumption": data.get("annual_consumption_mwh", 0.0),
-            "latitude": data.get("latitude", 50.0880),
-            "longitude": data.get("longitude", 14.4208),
-            
-            "annual_savings_czk": self._format_czk(data.get("financial_balance", {}).get("annual_savings_czk")),
-            "roi_years": self._format_number(data.get("investment_metrics", {}).get("roi_years"), 1),
-            "self_consumption_kwh": self._format_kwh(data.get("energy_balance_kwh", {}).get("self_consumption")),
-            "export_kwh": self._format_kwh(data.get("energy_balance_kwh", {}).get("grid_export")),
-            
+            "latitude": data.get("latitude", 50.6607),
+            "longitude": data.get("longitude", 14.03227),
+
+            "annual_savings_czk": self._format_czk(
+                data.get("financial_balance", {}).get("annual_savings_czk")),
+            "roi_years": self._format_number(
+                data.get("investment_metrics", {}).get("roi_years"), 1),
+            "self_consumption_kwh": self._format_kwh(
+                data.get("energy_balance_kwh", {}).get("self_consumption")),
+            "export_kwh": self._format_kwh(
+                data.get("energy_balance_kwh", {}).get("grid_export")),
+
             "balance": {
-                "total_consumption_kwh": self._format_kwh(data.get("energy_balance_kwh", {}).get("total_consumption")),
-                "total_cost_czk": self._format_czk(data.get("economic_balance_czk", {}).get("cost_total_consumption")),
-                "grid_import_kwh": self._format_kwh(data.get("energy_balance_kwh", {}).get("grid_import")),
-                "import_cost_czk": self._format_czk(data.get("economic_balance_czk", {}).get("cost_import")),
-                "grid_export_kwh": self._format_kwh(data.get("energy_balance_kwh", {}).get("grid_export")),
-                "export_revenue_czk": self._format_czk(data.get("economic_balance_czk", {}).get("revenue_export")),
-                "self_consumption_kwh": self._format_kwh(data.get("energy_balance_kwh", {}).get("self_consumption")),
-                "savings_self_ozk": self._format_czk(data.get("economic_balance_czk", {}).get("savings_self_consumption")),
+                "total_consumption_kwh": self._format_kwh(
+                    data.get("energy_balance_kwh", {}).get("total_consumption")),
+                "total_cost_czk": self._format_czk(
+                    data.get("economic_balance_czk", {}).get("cost_total_consumption")),
+                "grid_import_kwh": self._format_kwh(
+                    data.get("energy_balance_kwh", {}).get("grid_import")),
+                "import_cost_czk": self._format_czk(
+                    data.get("economic_balance_czk", {}).get("cost_import")),
+                "grid_export_kwh": self._format_kwh(
+                    data.get("energy_balance_kwh", {}).get("grid_export")),
+                "export_revenue_czk": self._format_czk(
+                    data.get("economic_balance_czk", {}).get("revenue_export")),
+                "self_consumption_kwh": self._format_kwh(
+                    data.get("energy_balance_kwh", {}).get("self_consumption")),
+                "savings_self_ozk": self._format_czk(
+                    data.get("economic_balance_czk", {}).get("savings_self_consumption")),
             },
-            
+
             "appliance_metrics": [],
-            "investment_table": [],
-            "inflation_energy": data.get("investment_context", {}).get("energy_inflation_rate", 2.0),
-            "degradation": data.get("investment_context", {}).get("panel_degradation_rate", 0.5),
-            
-            # Charts
+            "inflation_energy": data.get("investment_context", {}).get(
+                "energy_inflation_rate", 2.0),
+            "degradation": data.get("investment_context", {}).get(
+                "panel_degradation_rate", 0.5),
+
             "chart_monthly_stats": charts_b64.get("monthly_stats"),
             "chart_energy_treemap": charts_b64.get("energy_treemap"),
             "chart_savings_treemap": charts_b64.get("savings_treemap"),
@@ -110,21 +115,21 @@ class ReportGenerator:
             "chart_investment": charts_b64.get("investment"),
             "recommendations": data.get("recommendations", []),
             "monthly_summary": data.get("monthly_summary", []),
-            "appliance_monthly_summary": data.get("appliance_monthly_summary", [])
+            "appliance_monthly_summary": data.get("appliance_monthly_summary", []),
         }
-        
+
         # Process Appliance Metrics
         if "appliance_metrics" in data:
             for name, metrics in data["appliance_metrics"].items():
-                total = metrics.get('total_kWh', 0)
-                fve = metrics.get('fve_kWh', 0)
-                grid = metrics.get('grid_kWh', 0)
-                grid_cost = metrics.get('grid_cost_czk', 0)
-                hours = metrics.get('operating_hours', 0)
+                total = metrics.get("total_kWh", 0)
+                fve = metrics.get("fve_kWh", 0)
+                grid = metrics.get("grid_kWh", 0)
+                grid_cost = metrics.get("grid_cost_czk", 0)
+                hours = metrics.get("operating_hours", 0)
                 coverage = (fve / total * 100) if total > 0 else 0
                 profile = self.appliance_manager.get_appliance_profile(name)
                 description = profile.get("description", "") if profile else ""
-                
+
                 context["appliance_metrics"].append({
                     "name": name,
                     "description": description,
@@ -134,64 +139,82 @@ class ReportGenerator:
                     "grid_cost_czk": self._format_czk(grid_cost),
                     "operating_hours": hours,
                     "coverage_pct": self._format_number(coverage, 1),
-                    "savings_czk": self._format_czk(metrics.get("savings_czk"))
+                    "savings_czk": self._format_czk(metrics.get("savings_czk")),
                 })
-        
-        # New: Appliance Definitions / Configuration Details
+
+        # Appliance Definitions / Configuration Details
         appliance_definitions = []
         if "appliance_metrics" in data:
-            # Sort keys to ensure consistent order, excluding summaries
-            active_apps = [k for k in data["appliance_metrics"].keys() if k not in ["Základní chod", "CELKEM"]]
+            active_apps = [k for k in data["appliance_metrics"].keys()
+                           if k not in ["Základní chod", "CELKEM"]]
             for app in sorted(active_apps):
                 profile = self.appliance_manager.get_appliance_profile(app)
                 if profile:
-                    # Construct description of operation logic
                     logic_desc = profile.get("description", "")
-                    
-                    # Add seasonal info if relevant
                     if profile.get("seasonal", False):
-                        months = profile.get("seasonal_months", [])
-                        logic_desc += f" (Sezónní: {str(months)})"
-                    
-                    # Add standard schedule info
+                        logic_desc += f" (Sezónní: {profile.get('seasonal_months', [])})"
                     if profile.get("type") == "EV":
-                        strat = profile.get("charging_strategy", "weekly")
-                        charge = profile.get("charge_kwh", 0)
-                        logic_desc += f" | Strategie: {strat} | Nabití: {charge} kWh"
+                        logic_desc += (f" | Strategie: {profile.get('charging_strategy', 'weekly')}"
+                                       f" | Nabití: {profile.get('charge_kwh', 0)} kWh")
                     elif "daily_hours" in profile:
-                         logic_desc += f" | Provoz: {profile['daily_hours']} h/den"
+                        logic_desc += f" | Provoz: {profile['daily_hours']} h/den"
 
                     appliance_definitions.append({
                         "name": app,
                         "power": f"{profile.get('power_kW', 0)} kW",
                         "type": profile.get("type", "Standard"),
-                        "description": logic_desc
+                        "description": logic_desc,
                     })
         context["appliance_definitions"] = appliance_definitions
 
-        # Process Investment Table
-        if "investment_analysis" in data and "cashflow_table" in data["investment_analysis"]:
-            # Need to convert dataframe record dict to list if needed, or iterate
-            # Assuming input data["investment_analysis"]["cashflow_table"] is list of dicts from df.to_dict('records')
-            # Check how backend returns it. In analyzer.py it returns DataFrame. ToJson converts it.
-            # So likely logic expects dictionary.
-            raw_table = data["investment_analysis"].get("cashflow_table")
-            # If it's a dict (columns -> values) or list of records.
-            # Usually front end receives list of records oriented json or similar.
-            # Let's assume input data has it prepared.
-            
-            # If backend sends it as: {'Year': {0:0, 1:1}, ...} (classic pandas dict) -> messy.
-            # We should ensure backend sends list of records.
-            
-            # Assuming list of dicts for simplicity of template.
-            # We will handle transformation in the endpoint if needed.
-            for row in raw_table:
-                context["investment_table"].append({
-                    "year": row.get("Year"),
-                    "cashflow": self._format_czk(row.get("PV_Cumulative_CashFlow")),
-                    "sp500": self._format_czk(row.get("SP500_Total_Value"))
-                })
+        # Ekonomická část (nepovinná)
+        econ = economic or {}
+        metrics = econ.get("metrics", {})
+        context["economic"] = economic
+        context["investment_cost_czk"] = self._format_czk(econ.get("investment_cost"))
+        context["econ_payback"] = metrics.get("payback_years")
+        context["econ_dpp"] = metrics.get("discounted_payback_years")
+        context["econ_npv"] = self._format_czk(metrics.get("npv_czk"))
+        context["econ_final_pv_gain"] = self._format_czk(metrics.get("final_pv_gain_czk"))
+        context["econ_final_pv_reinvest_gain"] = self._format_czk(
+            metrics.get("final_pv_reinvest_gain_czk"))
+        context["econ_final_sp500_net"] = self._format_czk(
+            metrics.get("final_sp500_net_czk"))
+        context["investment_breakdown"] = [
+            {
+                "name": row.get("name") or row.get("code") or "-",
+                "rating": (self._format_number(row.get("rating"), 0)
+                           if row.get("rating") is not None else "-"),
+                "qty": (self._format_number(row.get("qty"), 0)
+                        if row.get("qty") is not None else "-"),
+                "unit_price": self._format_czk(row.get("unit_price")),
+                "line_total": self._format_czk(row.get("line_total")),
+            }
+            for row in (econ.get("investment_breakdown") or [])
+        ]
+        context["economic_year_rows"] = [
+            {
+                "year": row.get("Year"),
+                "pv_cumulative_cashflow": self._format_czk(
+                    row.get("PV_Cumulative_CashFlow")),
+                "pv_reinvest_net_result": self._format_czk(
+                    row.get("PV_Reinvest_Net_Result")),
+                "pv_cumulative_dcf": self._format_czk(row.get("PV_Cumulative_DCF")),
+                "sp500_total_value": self._format_czk(row.get("SP500_Total_Value")),
+                "sp500_net_result": self._format_czk(row.get("SP500_Net_Result")),
+            }
+            for row in (econ.get("raw_data") or [])
+        ]
+        return context
 
+    def generate_energy_report(self, data, economic=None):
+        """Generuje PDF energetické (+ ekonomické) analýzy.
+
+        `economic` je volitelný — bez něj se vynechá sekce Ekonomická
+        analýza i Přílohy A–D (chování jako dřív).
+        """
+        context = self._build_context(data, economic)
+        template = self.env.get_template("energy_report.html")
         html_content = template.render(context)
         pdf_bytes = HTML(string=html_content).write_pdf()
         return pdf_bytes
