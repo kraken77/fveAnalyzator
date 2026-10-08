@@ -163,7 +163,7 @@ def test_material_price_snapshot_defaults(db):
 def test_material_balance_by_lanes(db):
     from reportgen.economy import add_project_material, material_balance
     p = mk_project(db)
-    mat = Material(code="BAT-10", name="Baterie 10 kWh", unit="ks", price=120000)
+    mat = Material(code="BAT-10-TEST", name="Baterie 10 kWh", unit="ks", price=120000)
     db.add(mat)
     db.commit()
     db.refresh(mat)
@@ -175,7 +175,7 @@ def test_material_balance_by_lanes(db):
 
     bal = material_balance(db, p.id)
     row = bal[0]
-    assert row["code"] == "BAT-10"
+    assert row["code"] == "BAT-10-TEST"
     assert row["plan_qty"] == 2.0
     assert row["order_qty"] == 1.0
     assert row["issue_qty"] == 1.0

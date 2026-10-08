@@ -415,6 +415,59 @@ def _seed_rate_cards(db):
         db.commit()
 
 
+# Návrh cen k ruční kalibraci v UI. Výchozí sestava
+# 19× PAN-550 + INV-10 + BAT-10 + INS-MONT = 300 000 Kč je nový základ
+# ekonomiky (bylo 350 000). Konkrétní typy dodavatelů se neseedují.
+MATERIAL_SEED = [
+    {"code": "PAN-450", "name": "Panel 450 Wp", "category": "panel",
+     "rating": 450, "price": 2000, "visibility": "public", "is_default": False},
+    {"code": "PAN-550", "name": "Panel 550 Wp", "category": "panel",
+     "rating": 550, "price": 2500, "visibility": "public", "is_default": True},
+    {"code": "PAN-615", "name": "Panel 615 Wp", "category": "panel",
+     "rating": 615, "price": 2800, "visibility": "public", "is_default": False},
+    {"code": "INV-10", "name": "Měnič 10 kW", "category": "inverter",
+     "rating": 10, "price": 45000, "visibility": "public", "is_default": True},
+    {"code": "INV-15", "name": "Měnič 15 kW", "category": "inverter",
+     "rating": 15, "price": 62000, "visibility": "public", "is_default": False},
+    {"code": "INV-20", "name": "Měnič 20 kW", "category": "inverter",
+     "rating": 20, "price": 78000, "visibility": "public", "is_default": False},
+    {"code": "BAT-5", "name": "Baterie 5 kWh", "category": "battery",
+     "rating": 5, "price": 48000, "visibility": "public", "is_default": False},
+    {"code": "BAT-10", "name": "Baterie 10 kWh", "category": "battery",
+     "rating": 10, "price": 87500, "visibility": "public", "is_default": True},
+    {"code": "BAT-15", "name": "Baterie 15 kWh", "category": "battery",
+     "rating": 15, "price": 125000, "visibility": "public", "is_default": False},
+    {"code": "INS-MONT", "name": "Montáž instalace", "category": "install",
+     "rating": None, "price": 120000, "visibility": "public", "is_default": True},
+    {"code": "SYS-10-10", "name": "FVE 10 kWp / 10 kWh", "category": "system",
+     "rating": None, "price": 300000, "visibility": "public", "is_default": True,
+     "system_kwp": 10.0, "system_battery_kwh": 10.0},
+    {"code": "SYS-15-10", "name": "FVE 15 kWp / 10 kWh", "category": "system",
+     "rating": None, "price": 349000, "visibility": "public", "is_default": False,
+     "system_kwp": 15.0, "system_battery_kwh": 10.0},
+]
+
+
+def _seed_materials(db):
+    """Idempotentní seed ceníku — jen když je tabulka prázdná.
+
+    Ceny jdou přes `set_material_price`, takže vznikne i historie
+    (`material_prices`) a `materials.price` je s ní konzistentní.
+    """
+    if db.query(Material).count() > 0:
+        return
+    from .materials_service import set_material_price
+
+    for row in MATERIAL_SEED:
+        data = dict(row)
+        price = data.pop("price")
+        m = Material(**data)
+        db.add(m)
+        db.flush()
+        set_material_price(db, m.id, price, date(2020, 1, 1), created_by=None)
+    db.commit()
+
+
 def detach_step_materials(db, step_id: int) -> None:
     """Uvolní vazbu materiálů na rušený krok.
 
@@ -488,6 +541,8 @@ def init_db(db_path=None):
             db.commit()
         # sazby (RateCard) — idempotentní seed
         _seed_rate_cards(db)
+        # ceník materiálů — idempotentní seed (část 3)
+        _seed_materials(db)
         # číselník nastavení (marže ekonomiky) — idempotentní seed (M4)
         _seed_settings(db)
         # šablony pipeline + kroky — idempotentní seed (M1.2)

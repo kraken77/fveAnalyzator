@@ -191,3 +191,69 @@ def test_set_material_price_same_day_reprice_wins(db):
     set_material_price(db, m.id, 150.0, date(2026, 1, 1))
     db.commit()
     assert current_price(db, m.id, date(2026, 1, 1)) == 150.0
+
+
+# ---------- seed ----------
+
+def test_seed_materials_count_and_idempotent(db):
+    from reportgen.storage import Material, _seed_materials
+
+    assert db.query(Material).count() == 12
+    _seed_materials(db)
+    db.expire_all()
+    assert db.query(Material).count() == 12
+
+
+def test_seed_sum_is_exactly_300k(db):
+    from reportgen.storage import Material
+    from reportgen.materials_service import derive_qty
+
+    by_code = {m.code: m for m in db.query(Material).all()}
+    assert len(by_code) == 12
+    params = {"kwp": 10.0, "battery_capacity": 10.0}
+    total = (
+        by_code["PAN-550"].price * derive_qty("panel", by_code["PAN-550"].rating, params)
+        + by_code["INV-10"].price * derive_qty("inverter", by_code["INV-10"].rating, params)
+        + by_code["BAT-10"].price * derive_qty("battery", by_code["BAT-10"].rating, params)
+        + by_code["INS-MONT"].price * derive_qty("install", by_code["INS-MONT"].rating, params)
+    )
+    assert total == 300_000, f"kontrolní součet je {total}, čekáno 300000"
+
+
+def test_seed_defaults_and_system_fields(db):
+    from reportgen.storage import Material
+
+    by_code = {m.code: m for m in db.query(Material).all()}
+    for code in ("PAN-550", "INV-10", "BAT-10", "INS-MONT", "SYS-10-10"):
+        assert by_code[code].is_default is True, code
+    assert all(m.visibility == "public" for m in by_code.values())
+    assert by_code["SYS-10-10"].system_kwp == 10.0
+    assert by_code["SYS-10-10"].system_battery_kwh == 10.0
+    assert by_code["SYS-15-10"].system_kwp == 15.0
+
+
+def test_seed_creates_price_rows(db):
+    from datetime import date
+
+    from reportgen.storage import Material, MaterialPrice
+    from reportgen.materials_service import current_price
+
+    for m in db.query(Material).all():
+        count = db.query(MaterialPrice).filter(MaterialPrice.material_id == m.id).count()
+        assert count >= 1, f"{m.code} nemá cenový řádek"
+        assert current_price(db, m.id, date(2026, 10, 6)) == m.price
+
+
+def test_seed_materials_idempotent_on_second_init(db_path):
+    from reportgen import storage
+    from reportgen.storage import Material
+    from sqlalchemy.orm import sessionmaker
+
+    storage.init_db(db_path)
+    storage.init_db(db_path)
+    Session = sessionmaker(bind=storage.get_engine(db_path))
+    s = Session()
+    try:
+        assert s.query(Material).count() == 12
+    finally:
+        s.close()
