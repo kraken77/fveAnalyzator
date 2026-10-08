@@ -526,6 +526,44 @@ def test_economic_uses_bom_snapshot(client, admin_token):
     assert with_bom["metrics"]["npv_czk"] != legacy["metrics"]["npv_czk"]
 
 
+def test_economic_pdf_uses_bom_snapshot(client, admin_token, monkeypatch):
+    """`eco_keys` musí propustit `fve_materials` (ruling R6 z Tasku 5).
+
+    `/projects/{id}/generate` filtruje uložené fve_params na `eco_keys`.
+    Kdyby tam `fve_materials` chybělo, vytisklo by se ekonomické PDF
+    mlčky s legacy investicí 350 000 Kč místo se snímkem BOM.
+    """
+    captured: dict = {}
+
+    def spy_economic(valid):
+        captured.update(valid)
+        return {"metrics": {}, "investment_cost": 300000.0, "annual_savings": 30000.0}
+
+    # analogy k úspěšně spočítané analýze — ať endpoint nemusí chodit do PVGIS
+    monkeypatch.setattr(
+        "app.fve_analysis.run_energy_analysis",
+        lambda p: {"financial_balance": {"annual_savings_czk": 30000.0}})
+    monkeypatch.setattr("app.fve_analysis.run_economic_analysis", spy_economic)
+    monkeypatch.setattr(
+        "app.reporting.ReportGenerator.generate_economic_report",
+        lambda self, data: b"%PDF-1.4 fake economic report")
+
+    snapshot = [{"material_id": 5, "code": "SYS-10-10", "category": "system",
+                 "qty": 1, "unit_price": 300000.0, "line_total": 300000.0}]
+    pid = _save(client, admin_token, params={
+        "kwp": 10.0, "bom_mode": "system", "system_material_id": 5,
+        "fve_materials": snapshot,
+    }).json()["id"]
+
+    r = client.post(f"/api/v1/projects/{pid}/generate",
+                    json={"template": "economic"}, headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    # snímek se dostal přes eco_keys až k ekonomické analýze
+    assert captured["fve_materials"] == snapshot
+    # annual_savings se dopočítá z energetické větve, než se filtruje
+    assert captured["annual_savings"] == 30000.0
+
+
 # ---------- FveParams — přepínač sestavy (část 3) ----------
 
 def test_save_persists_bom_fields(client, admin_token):
