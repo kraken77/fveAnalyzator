@@ -437,3 +437,9 @@ def test_buyer_cannot_set_price_or_delete(client, admin_token, db_path):
                          headers=_auth(tok)).status_code == 403
     assert client.put(f"/api/v1/materials/{mid}", json={"name": "x"},
                       headers=_auth(tok)).status_code == 403
+
+
+def test_antelon_can_write_materials(client, db_path):
+    """admin I antelon smi zapisovat do ceniku (RBAC admin/antelon)."""
+    tok = _login(client, "antelon@test.local", "Antelon123!")
+    assert _create_material(client, tok, code="X-ANT").status_code == 200
