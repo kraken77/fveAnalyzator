@@ -62,11 +62,27 @@ class FveParams(BaseModel):
     thermal_battery_charge_power_kw: float = 2.0
     active_appliances: list[str] = []  # názvy, ne dict jako u Streamlitu
 
+    # Přepínač sestavy — spec 6.1, 6.2
+    bom_mode: str = "components"        # "system" | "components"
+    fve_materials: list[dict] = []      # snímek vybraných materiálů (BOM)
+    panel_material_id: int | None = None
+    inverter_material_id: int | None = None
+    battery_material_id: int | None = None
+    install_material_id: int | None = None
+    system_material_id: int | None = None
+
     @field_validator("sell_price_scheme")
     @classmethod
     def _valid_scheme(cls, v: str) -> str:
         if v not in ("fixed", "community", "shared", "spot"):
             raise ValueError(f"Neznámé schéma prodeje: {v}")
+        return v
+
+    @field_validator("bom_mode")
+    @classmethod
+    def _valid_bom_mode(cls, v: str) -> str:
+        if v not in ("system", "components"):
+            raise ValueError(f"Neznámý režim sestavy: {v}")
         return v
 
     def to_analysis_params(self) -> dict:

@@ -524,3 +524,39 @@ def test_economic_uses_bom_snapshot(client, admin_token):
                                  "fve_materials": [{"line_total": 300000.0}]},
                            headers=_auth(admin_token)).json()
     assert with_bom["metrics"]["npv_czk"] != legacy["metrics"]["npv_czk"]
+
+
+# ---------- FveParams — přepínač sestavy (část 3) ----------
+
+def test_save_persists_bom_fields(client, admin_token):
+    params = {
+        "kwp": 10.0,
+        "bom_mode": "system",
+        "system_material_id": 5,
+        "fve_materials": [{
+            "material_id": 5, "code": "SYS-10-10", "category": "system",
+            "qty": 1, "unit_price": 300000.0, "line_total": 300000.0,
+        }],
+    }
+    r = _save(client, admin_token, params=params)
+    assert r.status_code == 200, r.text
+    proj = client.get(f"/api/v1/projects/{r.json()['id']}",
+                      headers=_auth(admin_token)).json()
+    fp = proj["fve_params"]
+    assert fp["bom_mode"] == "system"
+    assert fp["system_material_id"] == 5
+    assert fp["fve_materials"][0]["line_total"] == 300000.0
+
+
+def test_save_rejects_unknown_bom_mode(client, admin_token):
+    r = _save(client, admin_token, params={"bom_mode": "drak"})
+    assert r.status_code == 422
+    assert "sestavy" in str(r.json()["detail"])
+
+
+def test_save_defaults_bom_mode_to_components(client, admin_token):
+    r = _save(client, admin_token, params={"kwp": 10.0})
+    proj = client.get(f"/api/v1/projects/{r.json()['id']}",
+                      headers=_auth(admin_token)).json()
+    assert proj["fve_params"]["bom_mode"] == "components"
+    assert proj["fve_params"]["fve_materials"] == []
