@@ -469,12 +469,13 @@ def run_energy_analysis(params: Dict[str, Any]) -> Dict[str, Any]:
 
 def run_economic_analysis(params: Dict[str, Any]) -> Dict[str, Any]:
     """Analýza návratnosti investice (FVE vs S&P500 vs reinvestace)."""
+    from app.reportgen.materials_service import compute_investment_cost
 
     def _p(name: str, default):
         return params[name] if name in params else default
 
     df = _mod("analyzer").calculate_investment_comparison(
-        initial_investment_czk=float(_p("investment_cost", 350000.0)),
+        initial_investment_czk=compute_investment_cost(params),
         annual_savings_czk=float(_p("annual_savings", 30000)),
         years=int(_p("years", 20)),
         sp500_return_pct=float(_p("sp500_return", 8)),

@@ -510,3 +510,17 @@ def test_sales_can_convert_to_order(client, admin_token, db_path):
     r = client.post(f"/api/v1/projects/{pid}/convert-to-order",
                     headers=_auth(token))
     assert r.status_code == 200, r.text
+
+
+# ---------- M4 — investice ze snímku materiálů (část 3) ----------
+
+def test_economic_uses_bom_snapshot(client, admin_token):
+    """Snímek fve_materials má přednost před legacy 350 000 Kč."""
+    legacy = client.post("/api/v1/fve-analysis/economic",
+                         json={"annual_savings": 30000},
+                         headers=_auth(admin_token)).json()
+    with_bom = client.post("/api/v1/fve-analysis/economic",
+                           json={"annual_savings": 30000,
+                                 "fve_materials": [{"line_total": 300000.0}]},
+                           headers=_auth(admin_token)).json()
+    assert with_bom["metrics"]["npv_czk"] != legacy["metrics"]["npv_czk"]

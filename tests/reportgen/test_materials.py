@@ -257,3 +257,27 @@ def test_seed_materials_idempotent_on_second_init(db_path):
         assert s.query(Material).count() == 12
     finally:
         s.close()
+
+
+# ---------- compute_investment_cost ----------
+
+def test_compute_investment_cost_prefers_snapshot():
+    from reportgen.materials_service import compute_investment_cost
+
+    bom = [{"line_total": 250000.0}, {"line_total": 50000.0}]
+    assert compute_investment_cost({"fve_materials": bom,
+                                    "investment_cost": 999999}) == 300000.0
+
+
+def test_compute_investment_cost_explicit_when_no_snapshot():
+    from reportgen.materials_service import compute_investment_cost
+
+    assert compute_investment_cost({"investment_cost": 275000.0}) == 275000.0
+
+
+def test_compute_investment_cost_legacy_fallback():
+    from reportgen.materials_service import compute_investment_cost
+
+    assert compute_investment_cost({}) == 350000.0
+    # prázdný snímek NENÍ nula — spadne na explicitní/legacy
+    assert compute_investment_cost({"fve_materials": []}) == 350000.0

@@ -74,3 +74,20 @@ def current_price(db, material_id: int, on: date) -> float | None:
            .order_by(MaterialPrice.valid_from.desc())
            .first())
     return row.price if row is not None else None
+
+LEGACY_INVESTMENT_COST = 350_000.0
+
+
+def compute_investment_cost(params) -> float:
+    """Investice pro ekonomiku.
+
+    Priorita: snímek `fve_materials` (nové analýzy) → explicitní
+    `investment_cost` → legacy fallback 350 000 Kč (staré analýzy beze
+    změny — záměrně se nepřepočítávají podle nového ceníku).
+    """
+    bom = (params or {}).get("fve_materials")
+    if bom:
+        return sum(float(line.get("line_total", 0)) for line in bom)
+    if params is not None and "investment_cost" in params:
+        return float(params["investment_cost"])
+    return LEGACY_INVESTMENT_COST

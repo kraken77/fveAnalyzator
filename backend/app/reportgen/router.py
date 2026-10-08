@@ -538,7 +538,8 @@ def generate_pdf(project_id: int, data: GenerateIn, user: User = Depends(get_cur
                                               run_economic_analysis,
                                               run_energy_analysis)
                 eco_keys = {"annual_savings", "investment_cost", "years",
-                            "sp500_return", "inflation", "discount_rate"}
+                            "sp500_return", "inflation", "discount_rate",
+                            "fve_materials"}
                 # Need annual_savings - compute via energy if missing
                 if "annual_savings" not in fve_params or fve_params["annual_savings"] is None:
                     valid_e = {k: v for k, v in fve_params.items() if k in analysis_param_keys()}
