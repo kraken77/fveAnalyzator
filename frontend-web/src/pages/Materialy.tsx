@@ -130,6 +130,8 @@ export default function Materialy() {
       setMsg(`Nová cena materiálu od ${r.valid_from}: ${Number(r.price).toLocaleString("cs-CZ")} Kč`);
       setAddMatId(priceMatId);
       await loadCatalog();
+      // bilance počítá s aktuální cenou — přepočítat, ať matice neukazuje starou
+      if (activePid) await loadProjectData(activePid);
     } catch (e: unknown) {
       const m =
         (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
@@ -269,7 +271,7 @@ export default function Materialy() {
                        onChange={(e) => setValidFrom(e.target.value)}
                        className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
               </div>
-              <button onClick={handleSetPrice} disabled={busy || !priceMatId}
+              <button onClick={handleSetPrice} disabled={busy || !priceMatId || !newPrice}
                       className="btn-navy w-full text-sm disabled:opacity-50">
                 Uložit cenu
               </button>
