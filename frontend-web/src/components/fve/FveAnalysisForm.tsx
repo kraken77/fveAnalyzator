@@ -74,7 +74,7 @@ function buildBom(p: FveParams, mats: FveMaterial[]): FveMaterialLine[] {
     const price = Number(m.price ?? 0);
     return [{
       material_id: Number(m.id), code: m.code, category: m.category,
-      qty: 1, unit_price: price, line_total: price,
+      qty: 1, unit_price: price, line_total: Number.isFinite(price) ? price : 0,
     }];
   }
   const picks: Array<{ id: number | null; category: string }> = [
@@ -89,9 +89,13 @@ function buildBom(p: FveParams, mats: FveMaterial[]): FveMaterialLine[] {
     if (!m) continue;
     const qty = deriveQty(pick.category, m.rating, p);
     const price = Number(m.price ?? 0);
+    const lineTotal = qty * price;
     out.push({
       material_id: Number(m.id), code: m.code, category: pick.category,
-      qty, unit_price: price, line_total: qty * price,
+      qty, unit_price: price,
+      // kwp/baterie mohou být během editace NaN (prázdné pole) — živý
+      // součet nesmí ukázat NaN; backend je při uložení autoritativní.
+      line_total: Number.isFinite(lineTotal) ? lineTotal : 0,
     });
   }
   return out;
@@ -165,6 +169,12 @@ export default function FveAnalysisForm({
       install_material_id: install ? Number(install.id) : null,
       system_material_id: system ? Number(system.id) : null,
     };
+    // i výchozí balíček předvyplní výkon/kapacitu (jinak by přepnutí na
+    // „Hotový systém" nechalo kwp z komponent)
+    if (system?.system_kwp != null) next.kwp = system.system_kwp;
+    if (system?.system_battery_kwh != null) {
+      next.battery_capacity = system.system_battery_kwh;
+    }
     next.fve_materials = buildBom(next, materials);
     onChange(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
