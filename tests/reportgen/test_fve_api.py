@@ -136,6 +136,9 @@ def test_economic_endpoint(client, admin_token):
         "payback_years", "discounted_payback_years", "npv_czk",
         "final_pv_gain_czk", "final_pv_reinvest_gain_czk", "final_sp500_net_czk",
     }
+    body = r.json()
+    assert body["investment_cost"] == 350000.0  # bez fve_materials = legacy
+    assert body["investment_breakdown"] == []
 
 
 # ---------- M3.4 uložení ----------

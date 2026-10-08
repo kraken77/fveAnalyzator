@@ -111,3 +111,27 @@ def test_economic_analysis_metrics():
             "final_pv_gain_czk", "final_pv_reinvest_gain_czk",
             "final_sp500_net_czk"} == set(r["metrics"].keys())
     assert isinstance(r["plot"], str)
+
+def test_economic_analysis_returns_investment_from_materials():
+    """Investice se počítá ze snímku fve_materials, ne z tvrdých 350 000."""
+    materials = [
+        {"material_id": 1, "code": "PAN-550", "category": "panel",
+         "rating": 550, "qty": 19, "unit_price": 2500.0, "line_total": 47500.0},
+        {"material_id": 2, "code": "INV-10", "category": "inverter",
+         "rating": 10, "qty": 1, "unit_price": 45000.0, "line_total": 45000.0},
+    ]
+    r = run_economic_analysis({
+        "annual_savings": 25000.0, "fve_materials": materials, "years": 20,
+    })
+    assert r["investment_cost"] == 92500.0
+    assert r["investment_breakdown"] == materials
+
+
+def test_economic_analysis_legacy_investment_fallback():
+    """Bez snímku (staré analýzy, explicitní zadání) platí fallback 350 000.
+
+    Staré analýzy se záměrně nepřepočítávají — chování jako dřív.
+    """
+    r = run_economic_analysis({"annual_savings": 30000, "years": 20})
+    assert r["investment_cost"] == 350000.0
+    assert r["investment_breakdown"] == []

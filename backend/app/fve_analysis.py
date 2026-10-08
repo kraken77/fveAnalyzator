@@ -468,14 +468,21 @@ def run_energy_analysis(params: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def run_economic_analysis(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Analýza návratnosti investice (FVE vs S&P500 vs reinvestace)."""
-    from app.reportgen.materials_service import compute_investment_cost
+    """Analýza návratnosti investice (FVE vs S&P500 vs reinvestace).
+
+    Investice pochází výhradně ze snímku `fve_materials` (plán 2:
+    `compute_investment_cost`). Staré analýzy bez snímku mají fallback
+    350 000 Kč — záměrně se nepřepočítávají.
+    """
 
     def _p(name: str, default):
         return params[name] if name in params else default
 
+    investment_cost = _mod("reportgen.materials_service").compute_investment_cost(params)
+    investment_breakdown = list(params.get("fve_materials") or [])
+
     df = _mod("analyzer").calculate_investment_comparison(
-        initial_investment_czk=compute_investment_cost(params),
+        initial_investment_czk=investment_cost,
         annual_savings_czk=float(_p("annual_savings", 30000)),
         years=int(_p("years", 20)),
         sp500_return_pct=float(_p("sp500_return", 8)),
@@ -511,6 +518,8 @@ def run_economic_analysis(params: Dict[str, Any]) -> Dict[str, Any]:
             "final_pv_reinvest_gain_czk": final_pv_reinvest_gain,
             "final_sp500_net_czk": final_sp500_net,
         },
+        "investment_cost": investment_cost,
+        "investment_breakdown": investment_breakdown,
         "plot": plot,
         "raw_data": df.to_dict(orient="records"),
     }
