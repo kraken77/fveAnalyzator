@@ -150,6 +150,15 @@ export default function FveAnalysisForm({
     fetchFveMaterials().then(setMaterials).catch(() => setMaterials([]));
   }, []);
 
+  // balíček předvyplní výkon/kapacitu; cena se PŘEPOČÍTÁVAT NEBUDE
+  const applySystemPackage = (next: FveParams): FveParams => {
+    if (next.system_material_id == null) return next;
+    const m = materials.find((x) => Number(x.id) === next.system_material_id);
+    if (m?.system_kwp != null) next.kwp = m.system_kwp;
+    if (m?.system_battery_kwh != null) next.battery_capacity = m.system_battery_kwh;
+    return next;
+  };
+
   // is_default předvyplní volbu, ale jen dokud uživatel nic nezvolil
   useEffect(() => {
     if (materials.length === 0) return;
@@ -169,12 +178,10 @@ export default function FveAnalysisForm({
       install_material_id: install ? Number(install.id) : null,
       system_material_id: system ? Number(system.id) : null,
     };
-    // i výchozí balíček předvyplní výkon/kapacitu (jinak by přepnutí na
-    // „Hotový systém" nechalo kwp z komponent)
-    if (system?.system_kwp != null) next.kwp = system.system_kwp;
-    if (system?.system_battery_kwh != null) {
-      next.battery_capacity = system.system_battery_kwh;
-    }
+    // balíček mění kwp/kapacitu jen v režimu „Hotový systém"; v režimu
+    // komponent zůstává uživatelovo kwp (jinak by předvyplnění přepsalo
+    // i kwp uložené legacy analýzy)
+    if (next.bom_mode === "system") applySystemPackage(next);
     next.fve_materials = buildBom(next, materials);
     onChange(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -186,6 +193,14 @@ export default function FveAnalysisForm({
     onChange(next);
   };
 
+  // přepnutí na hotový systém přenese výkon/kapacitu vybraného balíčku
+  const chooseMode = (mode: FveParams["bom_mode"]) => {
+    const next: FveParams = { ...params, bom_mode: mode };
+    if (mode === "system") applySystemPackage(next);
+    if (materials.length > 0) next.fve_materials = buildBom(next, materials);
+    onChange(next);
+  };
+
   const setBomMaterial = (
     key: "panel_material_id" | "inverter_material_id" | "battery_material_id"
        | "install_material_id" | "system_material_id",
@@ -193,12 +208,7 @@ export default function FveAnalysisForm({
   ) => {
     const id = raw === "" ? null : Number(raw);
     const next: FveParams = { ...params, [key]: id };
-    if (key === "system_material_id" && id != null) {
-      const m = materials.find((x) => Number(x.id) === id);
-      // balíček předvyplní výkon/kapacitu; cena se PŘEPOČÍTÁVAT NEBUDE
-      if (m?.system_kwp != null) next.kwp = m.system_kwp;
-      if (m?.system_battery_kwh != null) next.battery_capacity = m.system_battery_kwh;
-    }
+    if (key === "system_material_id") applySystemPackage(next);
     next.fve_materials = buildBom(next, materials);
     onChange(next);
   };
@@ -254,13 +264,13 @@ export default function FveAnalysisForm({
             <label className="flex items-center gap-2">
               <input type="radio" name="bom_mode"
                      checked={params.bom_mode === "components"}
-                     onChange={() => set("bom_mode", "components")} />
+                     onChange={() => chooseMode("components")} />
               Jednotlivé komponenty
             </label>
             <label className="flex items-center gap-2">
               <input type="radio" name="bom_mode"
                      checked={params.bom_mode === "system"}
-                     onChange={() => set("bom_mode", "system")} />
+                     onChange={() => chooseMode("system")} />
               Hotový systém
             </label>
           </div>
