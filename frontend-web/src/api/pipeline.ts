@@ -153,6 +153,14 @@ export async function addMaterial(body: {
   return res.data as Material;
 }
 
+export async function setMaterialPrice(
+  materialId: number | string,
+  body: { price: number; valid_from?: string },
+): Promise<{ id: number | string; material_id: number | string; price: number; valid_from: string; valid_to: string | null }> {
+  const res = await client.post(`/materials/${materialId}/price`, body);
+  return res.data;
+}
+
 export async function getProjectMaterials(projectId: number | string): Promise<ProjectMaterial[]> {
   const res = await client.get(`/projects/${projectId}/materials`);
   return res.data as ProjectMaterial[];

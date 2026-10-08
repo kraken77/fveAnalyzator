@@ -7,6 +7,7 @@ import {
   getMaterials,
   getMaterialsBalance,
   listProjects,
+  setMaterialPrice,
 } from "../api/pipeline";
 import type { Material, MaterialBalanceRow, ProjectLite } from "../types";
 
@@ -27,7 +28,7 @@ const LANE_POST: Record<string, string> = {
 export default function Materialy() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const canManage = hasAnyRole(user, ["admin", "buyer"]);
+  const canManage = hasAnyRole(user, ["admin", "antelon"]);
 
   const pid = id ?? "";
   const [projects, setProjects] = useState<ProjectLite[]>([]);
@@ -44,6 +45,11 @@ export default function Materialy() {
   const [mName, setMName] = useState("");
   const [mUnit, setMUnit] = useState("ks");
   const [mPrice, setMPrice] = useState("0");
+
+  // form: nová cena s platností
+  const [priceMatId, setPriceMatId] = useState("");
+  const [newPrice, setNewPrice] = useState("0");
+  const [validFrom, setValidFrom] = useState(() => new Date().toISOString().slice(0, 10));
 
   // form: add to project
   const [addMatId, setAddMatId] = useState("");
@@ -103,6 +109,31 @@ export default function Materialy() {
       const m =
         (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
         "Přidání materiálu selhalo";
+      setMsg(`Chyba: ${m}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSetPrice = async () => {
+    if (!priceMatId) {
+      setMsg("Vyberte materiál pro změnu ceny.");
+      return;
+    }
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await setMaterialPrice(priceMatId, {
+        price: Number(newPrice) || 0,
+        valid_from: validFrom,
+      });
+      setMsg(`Nová cena materiálu od ${r.valid_from}: ${Number(r.price).toLocaleString("cs-CZ")} Kč`);
+      setAddMatId(priceMatId);
+      await loadCatalog();
+    } catch (e: unknown) {
+      const m =
+        (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+        "Změna ceny selhala";
       setMsg(`Chyba: ${m}`);
     } finally {
       setBusy(false);
@@ -198,6 +229,7 @@ export default function Materialy() {
           </div>
 
           {canManage && (
+            <>
             <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
               <p className="text-xs font-semibold uppercase text-slateMuted">Nový materiál</p>
               <div className="grid grid-cols-2 gap-2">
@@ -210,6 +242,39 @@ export default function Materialy() {
                 Přidat do číselníku
               </button>
             </div>
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <p className="text-xs font-semibold uppercase text-slateMuted">Nová cena s platností</p>
+              <select
+                value={priceMatId}
+                onChange={(e) => {
+                  setPriceMatId(e.target.value);
+                  const m = materials.find((x) => String(x.id) === e.target.value);
+                  setNewPrice(String(m?.price ?? 0));
+                }}
+                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
+              >
+                <option value="">— materiál —</option>
+                {materials.map((m) => (
+                  <option key={String(m.id)} value={String(m.id)}>
+                    {m.code} — {m.name}
+                  </option>
+                ))}
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <input type="number" min={0} value={newPrice}
+                       onChange={(e) => setNewPrice(e.target.value)}
+                       placeholder="cena Kč"
+                       className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+                <input type="date" value={validFrom}
+                       onChange={(e) => setValidFrom(e.target.value)}
+                       className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm" />
+              </div>
+              <button onClick={handleSetPrice} disabled={busy || !priceMatId}
+                      className="btn-navy w-full text-sm disabled:opacity-50">
+                Uložit cenu
+              </button>
+            </div>
+            </>
           )}
         </div>
 
