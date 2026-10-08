@@ -334,3 +334,106 @@ def test_fve_materials_response_shape(client, admin_token):
         "id", "code", "name", "category", "visibility", "rating", "unit",
         "price", "is_default", "system_kwp", "system_battery_kwh",
     }
+
+
+# ---------- CRUD materiálů a RBAC ----------
+
+def _add_user(db_path, email, role):
+    """Uživatel mimo seed — API na vytvoření uživatele neexistuje."""
+    from reportgen.auth import hash_password
+
+    con = sqlite3.connect(db_path)
+    try:
+        con.execute(
+            "INSERT INTO users (email, password_hash, role, roles_json) "
+            "VALUES (?, ?, ?, ?)",
+            (email, hash_password("Xx123456!"), role, json.dumps([role])))
+        con.commit()
+    finally:
+        con.close()
+
+
+def _create_material(client, token, code="X-NEW", **over):
+    body = {"code": code, "name": "Nový materiál", "unit": "ks",
+            "price": 1234.0, "category": "panel", "rating": 550}
+    body.update(over)
+    return client.post("/api/v1/materials", json=body, headers=_auth(token))
+
+
+def test_buyer_cannot_write_materials(client, admin_token, db_path):
+    _add_user(db_path, "buyer-mat@test.local", "buyer")
+    tok = _login(client, "buyer-mat@test.local", "Xx123456!")
+    assert _create_material(client, tok, code="X-BUY").status_code == 403
+
+
+def test_admin_creates_material_with_price_history(client, admin_token, db_path):
+    r = _create_material(client, admin_token, code="X-ADM", visibility="internal")
+    assert r.status_code == 200, r.text
+    assert r.json()["id"]
+    assert r.json()["category"] == "panel"
+    assert r.json()["visibility"] == "internal"
+
+    con = sqlite3.connect(db_path)
+    try:
+        mid = r.json()["id"]
+        price = con.execute("SELECT price FROM materials WHERE id = ?", (mid,)).fetchone()[0]
+        rows = con.execute("SELECT COUNT(*) FROM material_prices WHERE material_id = ?",
+                           (mid,)).fetchone()[0]
+    finally:
+        con.close()
+    assert price == 1234.0
+    assert rows == 1
+
+
+def test_admin_updates_and_soft_deletes_material(client, admin_token, db_path):
+    mid = _create_material(client, admin_token, code="X-UPD").json()["id"]
+
+    upd = client.put(f"/api/v1/materials/{mid}",
+                     json={"name": "Přejmenováno", "visibility": "internal"},
+                     headers=_auth(admin_token))
+    assert upd.status_code == 200, upd.text
+    assert upd.json()["name"] == "Přejmenováno"
+
+    dele = client.delete(f"/api/v1/materials/{mid}", headers=_auth(admin_token))
+    assert dele.status_code == 200, dele.text
+
+    listed = client.get("/api/v1/materials", headers=_auth(admin_token)).json()
+    row = next(m for m in listed if m["id"] == mid)
+    assert row["active"] is False
+    # soft-smazaný materiál se nenabízí ve FVE formuláři
+    fve = client.get("/api/v1/fve-analysis/materials",
+                     headers=_auth(admin_token)).json()["materials"]
+    assert all(m["id"] != mid for m in fve)
+
+
+def test_price_endpoint_closes_previous_row(client, admin_token, db_path):
+    mid = _create_material(client, admin_token, code="X-PR", price=1000.0).json()["id"]
+
+    r = client.post(f"/api/v1/materials/{mid}/price",
+                    json={"price": 2000.0, "valid_from": "2026-08-01"},
+                    headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    assert r.json()["price"] == 2000.0
+
+    con = sqlite3.connect(db_path)
+    try:
+        price = con.execute("SELECT price FROM materials WHERE id = ?", (mid,)).fetchone()[0]
+        open_rows = con.execute(
+            "SELECT COUNT(*) FROM material_prices WHERE material_id = ? AND valid_to IS NULL",
+            (mid,)).fetchone()[0]
+    finally:
+        con.close()
+    assert price == 2000.0
+    assert open_rows == 1
+
+
+def test_buyer_cannot_set_price_or_delete(client, admin_token, db_path):
+    mid = _create_material(client, admin_token, code="X-BUY2").json()["id"]
+    _add_user(db_path, "buyer2-mat@test.local", "buyer")
+    tok = _login(client, "buyer2-mat@test.local", "Xx123456!")
+    assert client.post(f"/api/v1/materials/{mid}/price", json={"price": 1.0},
+                       headers=_auth(tok)).status_code == 403
+    assert client.delete(f"/api/v1/materials/{mid}",
+                         headers=_auth(tok)).status_code == 403
+    assert client.put(f"/api/v1/materials/{mid}", json={"name": "x"},
+                      headers=_auth(tok)).status_code == 403

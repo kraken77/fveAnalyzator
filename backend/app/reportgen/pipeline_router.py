@@ -376,6 +376,13 @@ class MaterialIn(BaseModel):
     name: str
     unit: str = "ks"
     price: float = 0.0
+    category: str = "other"
+    visibility: str = "public"
+    rating: float | None = None
+    supplier: str | None = None
+    is_default: bool = False
+    system_kwp: float | None = None
+    system_battery_kwh: float | None = None
 
 
 @router.get("/materials")
@@ -389,17 +396,107 @@ def list_materials(user: User = Depends(require_roles("admin", "antelon", "buyer
 
 @router.post("/materials")
 def create_material(data: MaterialIn,
-                    user: User = Depends(require_roles("admin", "buyer")),
+                    user: User = Depends(require_roles("admin", "antelon")),
                     db: Session = Depends(get_db)):
+    from .materials_service import set_material_price
     from .storage import Material
+
     if db.query(Material).filter(Material.code == data.code).first():
         raise HTTPException(400, f"Materiál s kódem {data.code!r} už existuje")
-    m = Material(code=data.code, name=data.name, unit=data.unit, price=data.price)
+    m = Material(code=data.code, name=data.name, unit=data.unit,
+                 category=data.category, visibility=data.visibility,
+                 rating=data.rating, supplier=data.supplier,
+                 is_default=data.is_default, system_kwp=data.system_kwp,
+                 system_battery_kwh=data.system_battery_kwh)
     db.add(m)
+    db.flush()
+    set_material_price(db, m.id, data.price, date.today(), user.id)
     db.commit()
     db.refresh(m)
     return {"id": m.id, "code": m.code, "name": m.name, "unit": m.unit,
-            "price": m.price}
+            "price": m.price, "category": m.category, "visibility": m.visibility,
+            "rating": m.rating, "is_default": m.is_default,
+            "system_kwp": m.system_kwp, "system_battery_kwh": m.system_battery_kwh}
+
+
+class MaterialUpdateIn(BaseModel):
+    name: str | None = None
+    unit: str | None = None
+    category: str | None = None
+    visibility: str | None = None
+    rating: float | None = None
+    supplier: str | None = None
+    is_default: bool | None = None
+    system_kwp: float | None = None
+    system_battery_kwh: float | None = None
+    active: bool | None = None
+    price: float | None = None
+    valid_from: date | None = None
+
+
+@router.put("/materials/{material_id}")
+def update_material(material_id: int, data: MaterialUpdateIn,
+                    user: User = Depends(require_roles("admin", "antelon")),
+                    db: Session = Depends(get_db)):
+    from .materials_service import set_material_price
+    from .storage import Material
+
+    m = db.query(Material).filter(Material.id == material_id).first()
+    if not m:
+        raise HTTPException(404, "Materiál nenalezen")
+    for field in ("name", "unit", "category", "visibility", "rating",
+                  "supplier", "is_default", "system_kwp", "system_battery_kwh",
+                  "active"):
+        value = getattr(data, field)
+        if value is not None:
+            setattr(m, field, value)
+    if data.price is not None:
+        set_material_price(db, m.id, data.price,
+                           data.valid_from or date.today(), user.id)
+    db.commit()
+    db.refresh(m)
+    return {"id": m.id, "code": m.code, "name": m.name, "unit": m.unit,
+            "price": m.price, "active": m.active, "category": m.category,
+            "visibility": m.visibility}
+
+
+@router.delete("/materials/{material_id}")
+def delete_material(material_id: int,
+                    user: User = Depends(require_roles("admin", "antelon")),
+                    db: Session = Depends(get_db)):
+    """Měkké smazání — `active=0`. Řádek i historie cen zůstávají."""
+    from .storage import Material
+
+    m = db.query(Material).filter(Material.id == material_id).first()
+    if not m:
+        raise HTTPException(404, "Materiál nenalezen")
+    m.active = False
+    db.commit()
+    return {"status": "ok"}
+
+
+class MaterialPriceIn(BaseModel):
+    price: float
+    valid_from: date | None = None
+
+
+@router.post("/materials/{material_id}/price")
+def set_material_price_endpoint(material_id: int, data: MaterialPriceIn,
+                                user: User = Depends(require_roles("admin", "antelon")),
+                                db: Session = Depends(get_db)):
+    from .materials_service import set_material_price
+    from .storage import Material
+
+    m = db.query(Material).filter(Material.id == material_id).first()
+    if not m:
+        raise HTTPException(404, "Materiál nenalezen")
+    row = set_material_price(db, material_id, data.price,
+                             data.valid_from or date.today(), user.id)
+    db.commit()
+    db.refresh(row)
+    return {"id": row.id, "material_id": material_id, "price": row.price,
+            "valid_from": row.valid_from.isoformat(),
+            "valid_to": row.valid_to.isoformat() if row.valid_to else None}
 
 
 class ProjectMaterialIn(BaseModel):
