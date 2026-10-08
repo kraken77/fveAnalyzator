@@ -5,6 +5,7 @@ import type {
   FveContact,
   FveEconomicResult,
   FveGeocode,
+  FveMaterial,
   FveParams,
   SavedAnalysis,
 } from "../types";
@@ -48,6 +49,12 @@ export const convertToOrder = (projectId: number | string) =>
 export const downloadEnergyPdf = (result: FveAnalysisResult) =>
   client.post("/fve-analysis/report/energy", result, { responseType: "blob" });
 
+/** Katalog pro přepínač sestavy. Server filtruje `internal` podle role. */
+export const fetchFveMaterials = () =>
+  client
+    .get<{ materials: FveMaterial[] }>("/fve-analysis/materials")
+    .then((r) => r.data.materials);
+
 /** Defaulty musí sedět s backendem (FveParams v fve_router.py). */
 export const DEFAULT_FVE_PARAMS: FveParams = {
   kwp: 10.0,
@@ -70,4 +77,11 @@ export const DEFAULT_FVE_PARAMS: FveParams = {
   thermal_battery_capacity_kwh: 0.0,
   thermal_battery_charge_power_kw: 2.0,
   active_appliances: [],
+  bom_mode: "components",
+  fve_materials: [],
+  panel_material_id: null,
+  inverter_material_id: null,
+  battery_material_id: null,
+  install_material_id: null,
+  system_material_id: null,
 };

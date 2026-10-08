@@ -153,6 +153,10 @@ export interface Material {
   unit?: string;
   price?: number;
   active?: boolean;
+  category?: string;
+  visibility?: string;
+  rating?: number | null;
+  is_default?: boolean;
 }
 
 export interface ProjectMaterial {
@@ -243,6 +247,38 @@ export interface FveParams {
   thermal_battery_capacity_kwh: number;
   thermal_battery_charge_power_kw: number;
   active_appliances: string[];
+  bom_mode: "system" | "components";
+  fve_materials: FveMaterialLine[];
+  panel_material_id: number | null;
+  inverter_material_id: number | null;
+  battery_material_id: number | null;
+  install_material_id: number | null;
+  system_material_id: number | null;
+}
+
+/** Jedna položka snímku sestavy, uložená v `fve_params_json`. */
+export interface FveMaterialLine {
+  material_id: number;
+  code: string;
+  category: string;
+  qty: number;
+  unit_price: number;
+  line_total: number;
+}
+
+/** Katalog pro přepínač sestavy. Server skryje `internal` zákazníkovi. */
+export interface FveMaterial {
+  id: number;
+  code: string;
+  name: string;
+  category: "panel" | "inverter" | "battery" | "install" | "system" | "other";
+  visibility: "public" | "internal";
+  rating?: number | null;
+  unit?: string;
+  price: number;
+  is_default?: boolean;
+  system_kwp?: number | null;
+  system_battery_kwh?: number | null;
 }
 
 export interface FveAppliance {
