@@ -69,7 +69,9 @@ def load_production_data(kwp=10, latitude=50.6607, longitude=14.03227, surface_t
         kwp=kwp,
         system_loss_factor=system_loss_factor,
         winter_loss_factor=winter_loss_factor,
-        weather_data=weather_data
+        weather_data=weather_data,
+        surface_tilt=surface_tilt,
+        surface_azimuth=surface_azimuth,
     )
     
     return production_df, total_production, optimal_production

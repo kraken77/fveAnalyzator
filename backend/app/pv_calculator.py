@@ -177,21 +177,30 @@ def get_pv_production(latitude, longitude, surface_tilt, surface_azimuth, kwp, t
 
 def get_optimal_pv_production(latitude, longitude, kwp, tz='UTC',
                               system_loss_factor=14.0, winter_loss_factor=None,
-                              weather_data=None):
-    """Nejlepší roční výroba přes sklon 10–70° při azimutu 180° (jih).
+                              weather_data=None, surface_tilt=None,
+                              surface_azimuth=None):
+    """Nejlepší roční výroba přes sklon 10–70° na optimální orientaci.
 
     Původní `surface_tilt=latitude` dávalo pro 50°N nesmyslných ~102 %.
-    Prohledáme sklon po 5° a vezmeme maximum. `winter_loss_factor`
-    propouštíme, aby se reálná výroba a optimum lišily POUZE orientací —
-    jinak by poměr mohl přesáhnout 100 %.
+    Prohledáme sklon po 5° a vezmeme maximum. Azimut je optimální pro
+    hemisféru (180° na severu, 0° na jihu). Když známe i reálnou orientaci
+    (`surface_tilt`/`surface_azimuth`), přidáme ji mezi kandidáty — tím je
+    zaručeno optimum ≥ reálná výroba i mimo defaultní mřížku a azimut.
+    `winter_loss_factor` propouštíme, aby se reálná výroba a optimum lišily
+    POUZE orientací — jinak by poměr mohl přesáhnout 100 %.
     """
+    best_azimuth = 180.0 if latitude >= 0 else 0.0
+    candidates = [(tilt, best_azimuth) for tilt in range(10, 71, 5)]
+    if surface_tilt is not None and surface_azimuth is not None:
+        candidates.append((surface_tilt, surface_azimuth))
+
     best = None
-    for tilt in range(10, 71, 5):
+    for tilt, azimuth in candidates:
         _, total = get_pv_production(
             latitude=latitude,
             longitude=longitude,
             surface_tilt=tilt,
-            surface_azimuth=180,
+            surface_azimuth=azimuth,
             kwp=kwp,
             tz=tz,
             system_loss_factor=system_loss_factor,

@@ -88,3 +88,29 @@ def test_optimum_accepts_winter_loss_factor():
     se = get_optimal_pv_production(
         50.6607, 14.03227, 10.0, winter_loss_factor=100.0, weather_data=weather)
     assert se < bez
+
+
+def test_optimum_never_below_actual_for_any_orientation():
+    """Optimum ≥ reálná výroba pro JAKOUKOLIV orientaci (bod 4b, nález N1).
+
+    Reálná orientace se přidá jako kandidát skenu, takže invariant drží i pro
+    sklon mimo mřížku (37°), jiný azimut (135°/270°) a jižní polokouli.
+    """
+    weather = _weather(25.0)
+    for lat, tilt, az in [
+        (50.6607, 35, 180),
+        (50.6607, 37, 135),
+        (50.6607, 55, 270),
+        (50.6607, 10, 90),
+        (50.6607, 70, 0),
+        (-33.87, 35, 0),
+        (-33.87, 30, 359),
+        (-33.87, 45, 180),
+    ]:
+        actual = get_pv_production(
+            lat, 14.03227, tilt, az, 10.0,
+            winter_loss_factor=10.0, weather_data=weather)[1]
+        optimum = get_optimal_pv_production(
+            lat, 14.03227, 10.0, winter_loss_factor=10.0, weather_data=weather,
+            surface_tilt=tilt, surface_azimuth=az)
+        assert optimum >= actual - 1e-9, (lat, tilt, az, actual, optimum)

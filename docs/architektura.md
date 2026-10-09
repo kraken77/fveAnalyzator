@@ -198,7 +198,7 @@ Všechno pod `/api/v1` má autentizaci. Bez ní jsou jen veřejné čtení
 |---|---|---|
 | POST | `/fve-analysis/run` | Energetická analýza → výsledky + grafy |
 | POST | `/fve-analysis/economic` | Ekonomická analýza |
-| POST | `/fve-analysis/geocode` | Adresa → GPS souřadnice |
+| POST | `/fve-analysis/geocode` | Adresa/obec → seznam kandidátů (lat/lon) |
 | GET | `/fve-analysis/appliances` | Katalog spotřebičů |
 | POST | `/fve-analysis` | Uložit analýzu jako projekt (se sběrem kontaktu) |
 | POST | `/fve-analysis/report/energy` | PDF energetického reportu |
@@ -230,7 +230,7 @@ Všechno pod `/api/v1` má autentizaci. Bez ní jsou jen veřejné čtení
 | Soubor | Co v něm | Pozor |
 |---|---|---|
 | `data/reportgen.db` | Projekty, pipeline, kroky, PDF verze, uživatelé | Jediný zdroj pravdy. Zálohuje se do `data/backups/` |
-| `data/weather_cache.db` | Cache počasí pro výpočet výroby | **V dev prostředí má jediný záznam** (50.0880 / 14.4208). Jakákoli jiná lokalita čte dál ze sítě (PVGIS) — a v testech to znamená timeout |
+| `data/weather_cache.db` | Cache počasí pro výpočet výroby | V dev prostředí obsahuje Prahu (50.0880 / 14.4208) a Ústí nad Labem (50.6607 / 14.03227). Jakákoli jiná lokalita čte dál ze sítě (PVGIS) — a v testech to znamená timeout |
 | `data/spot_market.db` | Spotové ceny OTE | Prázdná — skripty chybí |
 | `data/projects/<id>/` | Nahrané soubory projektu (CSV Shelly, fotky) | |
 | `data/pdfs/` | Vygenerované PDF | |
@@ -333,8 +333,9 @@ databázi.
 aserce mají rezervu řádově 10⁴ nad tímto šumem — neosazovat to je
 záměrná volba, ne nedopatření.
 
-Testy navíc musí používat souřadnice z `weather_cache.db` (50.0880 /
-14.4208). Jakákoli jiná lokalita jde na síť a timeoutuje.
+Testy navíc musí používat souřadnice z `weather_cache.db` (Praha 50.0880 /
+14.4208 nebo Ústí nad Labem 50.6607 / 14.03227). Jakákoli jiná lokalita
+jde na síť a timeoutuje.
 
 ### Který test hlídá co
 

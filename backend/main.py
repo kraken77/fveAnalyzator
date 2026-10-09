@@ -192,8 +192,8 @@ def analyze_ote(input_data: OteAnalysisInput):
             raise HTTPException(status_code=404, detail=f"No data found for year {input_data.year}")
 
         # Load 1kWp Production (Optimal)
-        # Using generic location (Prague) for general analysis if not specified
-        # or we could require coords in input, but simple is better for this tool.
+        # Výchozí lokalita Ústí nad Labem (shodná s FveParams), když vstup
+        # nezadá souřadnice — obecná analýza, ne per-zakázka.
         prod_df, _, _ = load_production_data(kwp=1.0, latitude=50.6607, longitude=14.03227)
 
         # Run Analysis

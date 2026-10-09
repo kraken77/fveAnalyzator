@@ -25,7 +25,7 @@ export const runEconomic = (params: Record<string, unknown>) =>
 export const geocode = (address: string) =>
   client
     .post<{ results: FveGeocodeResult[] }>("/fve-analysis/geocode", { address })
-    .then((r) => r.data.results);
+    .then((r) => r.data.results ?? []);
 
 export const fetchAppliances = () =>
   client

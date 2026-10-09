@@ -224,6 +224,7 @@ export default function FveAnalysisForm({
     setGeoError("");
     setGeoResults([]);
     setGeoIndex(null);
+    setGeoAttempted(false);
     try {
       const results = await geocode(city.trim());
       setGeoResults(results);
@@ -389,6 +390,9 @@ export default function FveAnalysisForm({
               className="mt-1 w-full border border-slate-300 rounded px-3 py-2 text-sm bg-white"
             />
           </label>
+          <p className="text-xs text-slate-600 mt-1">
+            Použité souřadnice: {params.latitude.toFixed(4)}, {params.longitude.toFixed(4)}
+          </p>
           {geoError && <p className="text-xs text-red-600 mt-1">{geoError}</p>}
           <button
             type="button"

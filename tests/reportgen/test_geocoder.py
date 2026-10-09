@@ -4,8 +4,21 @@
 bez sítě (User-Agent je povinný podle politiky OSM).
 """
 import requests
+import pytest
 
 from app import geocoder
+
+
+@pytest.fixture(autouse=True)
+def _clear_geocoder_cache():
+    """Izolace testů: `_CACHE` je modul-level a přežívá mezi testy.
+
+    Bez úklidu by pořadí mohlo nechat `telnice|6` z mock testu a živý API
+    test v test_fve_api.py by prošel z mocku, ne ze sítě.
+    """
+    geocoder._CACHE.clear()
+    yield
+    geocoder._CACHE.clear()
 
 
 def _fake_response(payload):

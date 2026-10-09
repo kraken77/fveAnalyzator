@@ -15,6 +15,8 @@ from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
+import requests
+
 from .auth import (
     can_access_project,
     get_current_user,
@@ -149,12 +151,19 @@ def geocode(payload: dict, user: User = Depends(ANY_ROLE)):
     prázdný seznam (200), ne 404 — s Nominatim se „nenalezeno" nedá
     spolehlivě odlišit od „málo konkrétní dotaz".
     """
-    address = (payload or {}).get("address", "").strip()
+    address = ((payload or {}).get("address") or "").strip()
     if not address:
         raise HTTPException(400, "Zadejte adresu nebo obec")
     from app.geocoder import search
 
-    results = search(address)
+    try:
+        results = search(address)
+    except requests.RequestException:
+        logger.exception("Geokódování přes Nominatim selhalo pro %r", address)
+        raise HTTPException(
+            502,
+            "Vyhledávání místa selhalo, zkuste to prosím za chvíli znovu.",
+        )
     # Nominatim vrací klíče lat/lon; FveParams má latitude/longitude.
     return {
         "results": [

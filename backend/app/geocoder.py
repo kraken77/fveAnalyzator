@@ -1,8 +1,8 @@
 """Geokódování přes Nominatim (OpenStreetMap).
 
 Nominatim umí adresy i obce a vrací více kandidátů; UI si z nich vybere.
-Politika OSM vyžaduje vlastní `User-Agent` a max ~1 req/s — proto držíme
-malou mezipaměť a tlačítko v UI je během hledání zamčené.
+Politika OSM vyžaduje vlastní `User-Agent`; mezipaměť šetří opakované
+dotazy a tlačítko v UI je během hledání zamčené.
 """
 import requests
 
