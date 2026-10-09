@@ -54,8 +54,8 @@ class FveParams(BaseModel):
     community_sell_price: float = 1.5
     shared_sell_price: float = 2.54
     spot_price_margin: float = 0.4
-    latitude: float = Field(default=50.0880, ge=-90.0, le=90.0)
-    longitude: float = Field(default=14.4208, ge=-180.0, le=180.0)
+    latitude: float = Field(default=50.6607, ge=-90.0, le=90.0)
+    longitude: float = Field(default=14.03227, ge=-180.0, le=180.0)
     surface_tilt: int = Field(default=35, ge=0, le=90)
     surface_azimuth: int = Field(default=180, ge=0, le=359)
     grid_export_limit_kw: float | None = 10.0

@@ -194,7 +194,7 @@ def analyze_ote(input_data: OteAnalysisInput):
         # Load 1kWp Production (Optimal)
         # Using generic location (Prague) for general analysis if not specified
         # or we could require coords in input, but simple is better for this tool.
-        prod_df, _, _ = load_production_data(kwp=1.0, latitude=50.0880, longitude=14.4208)
+        prod_df, _, _ = load_production_data(kwp=1.0, latitude=50.6607, longitude=14.03227)
 
         # Run Analysis
         results = analyze_spot_profitability(

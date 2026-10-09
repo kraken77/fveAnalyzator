@@ -21,8 +21,8 @@ def run_fve_energy(params: dict) -> Dict[str, Any]:
     price_dist = float(params.get("price_distribution", 2))
     price_sell = float(params.get("price_sell", 2))
     active = params.get("active_appliances_data", {})
-    lat = float(params.get("latitude", 50.088))
-    lon = float(params.get("longitude", 14.4208))
+    lat = float(params.get("latitude", 50.6607))
+    lon = float(params.get("longitude", 14.03227))
     tilt = int(params.get("surface_tilt", 35))
     azim = int(params.get("surface_azimuth", 180))
     sys_loss = float(params.get("system_loss_factor", 14))
@@ -137,7 +137,7 @@ def run_fve_ote(params: dict):
     # Load 1kWp production
     from data_loader import load_production_data
     from analyzer import analyze_spot_profitability
-    prod_df, _, _ = load_production_data(kwp=1.0, latitude=50.088, longitude=14.4208)
+    prod_df, _, _ = load_production_data(kwp=1.0, latitude=50.6607, longitude=14.03227)
 
     # Prepare spot_prices_df expected columns: datetime, price_czk ?
     # analyze_spot_profitability expects production_df, spot_prices_df, margin, fixed

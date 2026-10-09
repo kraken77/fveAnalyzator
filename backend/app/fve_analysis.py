@@ -47,13 +47,15 @@ _DEFAULTS = {
     "price_distribution": 2.0,
     "price_sell": 2.0,
     "active_appliances_data": {},
-    "grid_export_limit_kw": None,
+    # UI default je 10 kW (FveParams i DEFAULT_FVE_PARAMS). Původní None
+    # ("bez limitu") byl drift, který odhalil parity test v test_fve_defaults.
+    "grid_export_limit_kw": 10.0,
     "sell_price_scheme": "fixed",
     "community_sell_price": 1.5,
     "shared_sell_price": 2.54,
     "spot_price_margin": 0.4,
-    "latitude": 50.088,
-    "longitude": 14.4208,
+    "latitude": 50.6607,
+    "longitude": 14.03227,
     "surface_tilt": 35,
     "surface_azimuth": 180,
     "thermal_battery_capacity_kwh": 0.0,

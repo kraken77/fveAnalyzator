@@ -30,7 +30,8 @@ def test_default_params_cover_streamlit_settings():
     ):
         assert key in p, f"chybí parametr {key}"
     # defaultní souřadnice jsou v weather_cache.db → testy běží offline
-    assert (p["latitude"], p["longitude"]) == (50.0880, 14.4208)
+    # (cache obsahuje i Ústí 50.6607, 14.0323; shoda do 0.001)
+    assert (p["latitude"], p["longitude"]) == (50.6607, 14.03227)
 
 
 def test_appliance_catalog_matches_manager():

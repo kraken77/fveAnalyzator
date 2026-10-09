@@ -42,7 +42,7 @@ def load_consumption_data(target_annual_kwh=None):
 
 from .pv_calculator import get_pv_production, get_optimal_pv_production, fetch_pvgis_tmy_data
 
-def load_production_data(kwp=10, latitude=50.088, longitude=14.4208, surface_tilt=35, surface_azimuth=180, system_loss_factor=14.0, winter_loss_factor=10.0):
+def load_production_data(kwp=10, latitude=50.6607, longitude=14.03227, surface_tilt=35, surface_azimuth=180, system_loss_factor=14.0, winter_loss_factor=10.0):
     """
     Calculates PV production data using pvlib and returns both actual and optimal production.
     Fetches TMY data from PVGIS for more realistic simulation.
