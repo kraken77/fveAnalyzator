@@ -41,3 +41,50 @@ def test_get_pv_production_applies_temperature_derate():
     _, hot = get_pv_production(
         50.0, 14.0, 35, 180, 10.0, weather_data=_weather(45.0))
     assert hot < cold
+
+
+def test_optimum_finds_best_tilt_and_never_exceeds_actual():
+    """Optimum = maximum přes sklon 10–70° po 5°, azimut 180°.
+
+    Sken zahrnuje i defaultní sklon 35°, takže optimum nikdy nesmí být
+    menší než skutečná výroba pro tytéž podmínky → poměr ≤ 100 %.
+    """
+    weather = _weather(25.0)
+    actual = get_pv_production(
+        50.6607, 14.03227, 35, 180, 10.0,
+        winter_loss_factor=10.0, weather_data=weather)[1]
+    optimum = get_optimal_pv_production(
+        50.6607, 14.03227, 10.0,
+        winter_loss_factor=10.0, weather_data=weather)
+
+    brute = max(
+        get_pv_production(50.6607, 14.03227, tilt, 180, 10.0,
+                          winter_loss_factor=10.0, weather_data=weather)[1]
+        for tilt in range(10, 71, 5)
+    )
+    assert abs(optimum - brute) < 1e-9
+    assert optimum >= actual - 1e-9
+
+
+def test_optimum_accepts_winter_loss_factor():
+    """Zimní ztráta se propouští, aby se reál a optimum lišily jen orientací.
+
+    Počasí obsahuje leden i červenec; při 100% zimní ztrátě musí být
+    prosinec/leden/únor nulový, takže optimum klesne.
+    """
+    times = (
+        pd.date_range("2024-01-15 12:00", periods=3, freq="h", tz="UTC")
+        .append(pd.date_range("2024-07-15 12:00", periods=3, freq="h", tz="UTC"))
+    )
+    weather = pd.DataFrame(
+        {
+            "ghi": [500.0] * 6, "dni": [400.0] * 6, "dhi": [100.0] * 6,
+            "temp_air": [25.0] * 6, "wind_speed": [1.0] * 6,
+        },
+        index=times,
+    )
+    bez = get_optimal_pv_production(
+        50.6607, 14.03227, 10.0, winter_loss_factor=None, weather_data=weather)
+    se = get_optimal_pv_production(
+        50.6607, 14.03227, 10.0, winter_loss_factor=100.0, weather_data=weather)
+    assert se < bez

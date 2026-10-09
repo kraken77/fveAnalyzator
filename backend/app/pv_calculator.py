@@ -175,34 +175,29 @@ def get_pv_production(latitude, longitude, surface_tilt, surface_azimuth, kwp, t
     
     return pd.DataFrame({'datetime': times, 'production_kWh': production}), total_production
 
-def get_optimal_pv_production(latitude, longitude, kwp, tz='UTC', system_loss_factor=14.0, weather_data=None):
-    """
-    Calculates the optimal PV production for a given location and capacity.
-    Optimal tilt is assumed to be equal to latitude, and optimal azimuth is 180 (south).
-    Applies general system losses. Uses provided weather data if available,
-    otherwise falls back to clear-sky model.
+def get_optimal_pv_production(latitude, longitude, kwp, tz='UTC',
+                              system_loss_factor=14.0, winter_loss_factor=None,
+                              weather_data=None):
+    """Nejlepší roční výroba přes sklon 10–70° při azimutu 180° (jih).
 
-    Args:
-        latitude (float): Latitude of the location.
-        longitude (float): Longitude of the location.
-        kwp (float): The peak power of the PV system in kWp.
-        tz (str): The timezone of the location.
-        system_loss_factor (float): General system loss factor in percentage (e.g., 14.0 for 14% loss).
-        weather_data (pd.DataFrame, optional): TMY weather data (GHI, DNI, DHI, etc.). If None, clear-sky model is used.
-
-    Returns:
-        float: The total optimal annual production in kWh.
+    Původní `surface_tilt=latitude` dávalo pro 50°N nesmyslných ~102 %.
+    Prohledáme sklon po 5° a vezmeme maximum. `winter_loss_factor`
+    propouštíme, aby se reálná výroba a optimum lišily POUZE orientací —
+    jinak by poměr mohl přesáhnout 100 %.
     """
-    # For simplicity, we only need the total production, so we don't need to return the full DataFrame
-    _, total_production = get_pv_production(
-        latitude=latitude,
-        longitude=longitude,
-        surface_tilt=latitude, # Optimal tilt approx. equal to latitude
-        surface_azimuth=180,   # South-facing
-        kwp=kwp,
-        tz=tz,
-        system_loss_factor=system_loss_factor,
-        winter_loss_factor=None, # No additional winter loss for theoretical optimal
-        weather_data=weather_data # Pass weather data to optimal production calculation
-    )
-    return total_production
+    best = None
+    for tilt in range(10, 71, 5):
+        _, total = get_pv_production(
+            latitude=latitude,
+            longitude=longitude,
+            surface_tilt=tilt,
+            surface_azimuth=180,
+            kwp=kwp,
+            tz=tz,
+            system_loss_factor=system_loss_factor,
+            winter_loss_factor=winter_loss_factor,
+            weather_data=weather_data,
+        )
+        if best is None or total > best:
+            best = total
+    return best

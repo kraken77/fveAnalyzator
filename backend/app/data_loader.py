@@ -68,6 +68,7 @@ def load_production_data(kwp=10, latitude=50.6607, longitude=14.03227, surface_t
         longitude=longitude,
         kwp=kwp,
         system_loss_factor=system_loss_factor,
+        winter_loss_factor=winter_loss_factor,
         weather_data=weather_data
     )
     

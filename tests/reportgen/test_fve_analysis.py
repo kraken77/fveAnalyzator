@@ -136,3 +136,10 @@ def test_economic_analysis_legacy_investment_fallback():
     r = run_economic_analysis({"annual_savings": 30000, "years": 20})
     assert r["investment_cost"] == 350000.0
     assert r["investment_breakdown"] == []
+
+
+def test_production_performance_never_exceeds_100_pct():
+    """Optimum hledá přes sklon a bere winter_loss → poměr ≤ 100 % (bod 4b)."""
+    r = run_energy_analysis({"kwp": 10.0})
+    pct = r["production_details"]["production_performance_pct"]
+    assert pct <= 100.0 + 1e-6, f"production_performance_pct={pct}"
