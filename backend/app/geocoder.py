@@ -1,51 +1,48 @@
+"""Geokódování přes Nominatim (OpenStreetMap).
+
+Nominatim umí adresy i obce a vrací více kandidátů; UI si z nich vybere.
+Politika OSM vyžaduje vlastní `User-Agent` a max ~1 req/s — proto držíme
+malou mezipaměť a tlačítko v UI je během hledání zamčené.
+"""
 import requests
 
-def get_coordinates(address: str):
-    """
-    Fetches latitude and longitude for a given address using Open-Meteo Geocoding API.
-    
-    Args:
-        address (str): The address to geocode.
-        
-    Returns:
-        dict: A dictionary with 'lat', 'lon', and 'display_name' or None if not found.
-    """
-    if not address:
-        return None
-        
-    url = "https://geocoding-api.open-meteo.com/v1/search"
-    params = {
-        "name": address,
-        "count": 1,
-        "language": "cs", # Prefer Czech results
-        "format": "json"
-    }
-    
-    try:
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        data = response.json()
-        
-        if "results" in data and data["results"]:
-            result = data["results"][0]
-            # Construct display name from available fields
-            name = result.get("name", "")
-            admin1 = result.get("admin1", "")
-            country = result.get("country", "")
-            display_name = ", ".join(filter(None, [name, admin1, country]))
-            
-            return {
-                "lat": float(result["latitude"]),
-                "lon": float(result["longitude"]),
-                "display_name": display_name
-            }
-        return None
-    except Exception as e:
-        print(f"Geocoding error: {e}")
-        return None
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+USER_AGENT = "antelon-energy/1.0"
 
-if __name__ == "__main__":
-    # Quick test
-    test_address = "Prague"
-    coords = get_coordinates(test_address)
-    print(f"Coordinates for '{test_address}': {coords}")
+_CACHE: dict[str, list[dict]] = {}
+
+
+def search(address: str, limit: int = 6) -> list[dict]:
+    """Vrátí kandidáty z Nominatim. Prázdný vstup i nenalezeno → []."""
+    address = (address or "").strip()
+    if not address:
+        return []
+
+    key = f"{address.lower()}|{limit}"
+    if key in _CACHE:
+        return _CACHE[key]
+
+    response = requests.get(
+        NOMINATIM_URL,
+        params={
+            "q": address,
+            "format": "jsonv2",
+            "limit": limit,
+            "addressdetails": 1,
+        },
+        headers={"User-Agent": USER_AGENT, "Accept-Language": "cs"},
+        timeout=10,
+    )
+    response.raise_for_status()
+    data = response.json() or []
+
+    results = [
+        {
+            "lat": float(item["lat"]),
+            "lon": float(item["lon"]),
+            "display_name": item.get("display_name", ""),
+        }
+        for item in data
+    ]
+    _CACHE[key] = results
+    return results
