@@ -14,6 +14,19 @@ import os
 # Suppress FutureWarnings from pvlib
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+# Teplotní koeficient Pmax pro monokrystalický PERC panel: −0,4 %/°C nad 25 °C.
+# Není to parametr v UI — konstanta modulu (design 8.2).
+TEMP_COEFF_PER_C = -0.004
+
+
+def apply_temperature_derate(production, cell_temp, coeff=TEMP_COEFF_PER_C):
+    """Teplotní korekce DC výkonu podle teploty článku.
+
+    `production` i `cell_temp` mohou být pandas Series nebo skaláry —
+    operace je elementwise. Aplikuje se PŘED systémovými ztrátami.
+    """
+    return production * (1 + coeff * (cell_temp - 25.0))
+
 def fetch_pvgis_tmy_data(latitude, longitude, tz='UTC'):
     """
     Fetches TMY weather data from PVGIS for a given location.
@@ -142,14 +155,13 @@ def get_pv_production(latitude, longitude, surface_tilt, surface_azimuth, kwp, t
     # Using Faiman model for simplicity
     cell_temp = pvlib.temperature.faiman(poa_irradiance['poa_global'], temp_air, wind_speed)
 
-    # Calculate PV system output (DC power)
-    # Using simple PVWatts-like efficiency model
-    # Assume reference efficiency at 1000 W/m^2 and 25C
-    # Power_output = kWp * (POA_global / 1000) * (1 + alpha * (cell_temp - 25))
-    # Where alpha is temperature coefficient (e.g. -0.004 /C)
-    # For now, stick to the simpler model without explicit temperature correction in this layer
+    # DC výkon při referenčních podmínkách (1000 W/m^2, 25 °C).
     production = poa_irradiance['poa_global'] / 1000 * kwp
-    
+
+    # Teplotní ztráta PŘED systémovými ztrátami (design 8.2). Riziko
+    # dvojího započtení se měří proti PVGIS SARAH3 — viz závěrečné ověření.
+    production = apply_temperature_derate(production, cell_temp)
+
     # Apply general system loss factor
     production *= (1 - system_loss_factor / 100)
 
