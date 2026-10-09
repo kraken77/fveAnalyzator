@@ -1,7 +1,7 @@
 import PlotlyChart from "./PlotlyChart";
 import { downloadEnergyPdf, runEconomic } from "../../api/fve";
 import { useState } from "react";
-import type { FveAnalysisResult, FveEconomicResult } from "../../types";
+import type { FveAnalysisResult, FveEconomicResult, FveParams } from "../../types";
 
 function Metric({ label, value, unit }: { label: string; value: number; unit: string }) {
   return (
@@ -18,7 +18,9 @@ function Metric({ label, value, unit }: { label: string; value: number; unit: st
 const APP_SORT = (name: string) =>
   name === "Základní chod" ? 0 : name === "CELKEM" ? 2 : 1;
 
-export default function FveAnalysisResults({ result }: { result: FveAnalysisResult }) {
+export default function FveAnalysisResults(
+  { result, params }: { result: FveAnalysisResult; params: Partial<FveParams> },
+) {
   const [economic, setEconomic] = useState<FveEconomicResult | null>(null);
   const [econLoading, setEconLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -29,6 +31,7 @@ export default function FveAnalysisResults({ result }: { result: FveAnalysisResu
     setError("");
     try {
       setEconomic(await runEconomic({
+        ...params,
         annual_savings: result.financial_balance.annual_savings_czk,
       }));
     } catch (e: any) {
@@ -42,7 +45,16 @@ export default function FveAnalysisResults({ result }: { result: FveAnalysisResu
     setPdfLoading(true);
     setError("");
     try {
-      const res = await downloadEnergyPdf(result);
+      // PDF má mít ekonomickou sekci — když ještě není spočítaná, dodělej ji.
+      let econ = economic;
+      if (!econ) {
+        econ = await runEconomic({
+          ...params,
+          annual_savings: result.financial_balance.annual_savings_czk,
+        });
+        setEconomic(econ);
+      }
+      const res = await downloadEnergyPdf(result, econ);
       const url = window.URL.createObjectURL(
         new Blob([res.data], { type: "application/pdf" }),
       );
@@ -155,6 +167,7 @@ export default function FveAnalysisResults({ result }: { result: FveAnalysisResu
         ) : (
           <div className="space-y-3">
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              <Metric label="Investice" value={economic.investment_cost} unit="Kč" />
               <Metric label="Návratnost" value={Number(economic.metrics.payback_years)} unit="let" />
               <Metric label="Diskontovaná návratnost"
                       value={Number(economic.metrics.discounted_payback_years)} unit="let" />

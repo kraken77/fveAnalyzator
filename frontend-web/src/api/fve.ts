@@ -45,9 +45,17 @@ export const convertToOrder = (projectId: number | string) =>
     )
     .then((r) => r.data);
 
-/** PDF jako blob — ne JSON, takže responseType: "blob". */
-export const downloadEnergyPdf = (result: FveAnalysisResult) =>
-  client.post("/fve-analysis/report/energy", result, { responseType: "blob" });
+/** PDF jako blob — ne JSON, takže responseType: "blob".
+ *  Ekonomika je volitelná; když chybí, PDF ji vynechá (chování jako dřív). */
+export const downloadEnergyPdf = (
+  energy: FveAnalysisResult,
+  economic: FveEconomicResult | null,
+) =>
+  client.post(
+    "/fve-analysis/report/energy",
+    { energy, economic },
+    { responseType: "blob" },
+  );
 
 /** Katalog pro přepínač sestavy. Server filtruje `internal` podle role. */
 export const fetchFveMaterials = () =>

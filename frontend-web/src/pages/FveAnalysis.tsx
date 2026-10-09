@@ -80,7 +80,7 @@ export default function FveAnalysisPage() {
         />
       )}
 
-      {tab === "results" && result && <FveAnalysisResults result={result} />}
+      {tab === "results" && result && <FveAnalysisResults result={result} params={params} />}
 
       {tab === "contact" && (
         <ContactStep params={params} />

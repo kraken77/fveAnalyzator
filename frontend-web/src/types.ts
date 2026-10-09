@@ -256,11 +256,15 @@ export interface FveParams {
   system_material_id: number | null;
 }
 
-/** Jedna položka snímku sestavy, uložená v `fve_params_json`. */
+/** Jedna položka snímku sestavy, uložená v `fve_params_json`.
+ *  Stejný tvar vrací i `run_economic_analysis` v `investment_breakdown`
+ *  (proto volitelné `name`/`rating` — řádek rozpadu investice je může nést). */
 export interface FveMaterialLine {
   material_id: number;
   code: string;
+  name?: string;
   category: string;
+  rating?: number | null;
   qty: number;
   unit_price: number;
   line_total: number;
@@ -351,6 +355,8 @@ export interface FveEconomicResult {
     final_pv_reinvest_gain_czk: number;
     final_sp500_net_czk: number;
   };
+  investment_cost: number;
+  investment_breakdown: FveMaterialLine[];
   plot: string | null;
   raw_data: Array<Record<string, number>>;
 }

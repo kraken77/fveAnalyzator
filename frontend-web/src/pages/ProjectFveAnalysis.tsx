@@ -145,7 +145,7 @@ export default function ProjectFveAnalysisPage() {
         />
       )}
 
-      {tab === "results" && result && <FveAnalysisResults result={result} />}
+      {tab === "results" && result && <FveAnalysisResults result={result} params={params} />}
 
       {tab === "contact" && (
         <div className="space-y-3">
