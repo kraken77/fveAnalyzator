@@ -4,7 +4,7 @@ import type {
   FveAppliance,
   FveContact,
   FveEconomicResult,
-  FveGeocode,
+  FveGeocodeResult,
   FveMaterial,
   FveParams,
   SavedAnalysis,
@@ -21,11 +21,11 @@ export const runEconomic = (params: Record<string, unknown>) =>
     .post<FveEconomicResult>("/fve-analysis/economic", params)
     .then((r) => r.data);
 
-/** Hledá NÁZEV OBCE, ne adresu (Open-Meteo je name search). */
+/** Nominatim hledá adresu i obec a vrací VÍC kandidátů k výběru. */
 export const geocode = (address: string) =>
   client
-    .post<FveGeocode>("/fve-analysis/geocode", { address })
-    .then((r) => r.data);
+    .post<{ results: FveGeocodeResult[] }>("/fve-analysis/geocode", { address })
+    .then((r) => r.data.results);
 
 export const fetchAppliances = () =>
   client

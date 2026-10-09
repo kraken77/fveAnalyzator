@@ -293,7 +293,7 @@ export interface FveAppliance {
   description: string;
 }
 
-export interface FveGeocode {
+export interface FveGeocodeResult {
   latitude: number;
   longitude: number;
   display_name: string;

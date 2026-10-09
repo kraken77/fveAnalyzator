@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchFveMaterials, geocode } from "../../api/fve";
 import type {
-  FveAppliance, FveGeocode, FveMaterial, FveMaterialLine, FveParams,
+  FveAppliance, FveGeocodeResult, FveMaterial, FveMaterialLine, FveParams,
 } from "../../types";
 
 const SELL_SCHEMES = [
@@ -140,7 +140,9 @@ export default function FveAnalysisForm({
   params, onChange, appliances, onRun, running,
 }: Props) {
   const [city, setCity] = useState("");
-  const [geo, setGeo] = useState<FveGeocode | null>(null);
+  const [geoResults, setGeoResults] = useState<FveGeocodeResult[]>([]);
+  const [geoIndex, setGeoIndex] = useState<number | null>(null);
+  const [geoAttempted, setGeoAttempted] = useState(false);
   const [geoError, setGeoError] = useState("");
   const [geocoding, setGeocoding] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -215,21 +217,30 @@ export default function FveAnalysisForm({
 
   const doGeocode = async () => {
     if (!city.trim()) {
-      setGeoError("Zadejte název obce");
+      setGeoError("Zadejte adresu nebo obec");
       return;
     }
     setGeocoding(true);
     setGeoError("");
+    setGeoResults([]);
+    setGeoIndex(null);
     try {
-      const r = await geocode(city.trim());
-      setGeo(r);
-      onChange({ ...params, latitude: r.latitude, longitude: r.longitude });
+      const results = await geocode(city.trim());
+      setGeoResults(results);
+      setGeoAttempted(true);
     } catch (e: any) {
-      setGeo(null);
+      setGeoResults([]);
+      setGeoAttempted(true);
       setGeoError(e?.response?.data?.detail || "Místo se nepodařilo najít");
     } finally {
       setGeocoding(false);
     }
+  };
+
+  // Výběr konkrétní varianty nastaví souřadnice a zvýrazní ji.
+  const selectGeocode = (r: FveGeocodeResult, index: number) => {
+    setGeoIndex(index);
+    onChange({ ...params, latitude: r.latitude, longitude: r.longitude });
   };
 
   const toggleAppliance = (name: string, on: boolean) =>
@@ -369,24 +380,16 @@ export default function FveAnalysisForm({
       <Card title="Umístění a pokročilé parametry">
         <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
           <label className="block text-sm text-slate-700">
-            Obec nebo město
+            Adresa nebo obec
             <input
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="např. Praha"
+              placeholder="např. Varvažov 210 Telnice"
               className="mt-1 w-full border border-slate-300 rounded px-3 py-2 text-sm bg-white"
             />
           </label>
-          <p className="text-xs text-slate-500 mt-1">
-            Vyhledává se obec, ne ulice — zadejte např. „Praha" nebo „Brno".
-          </p>
           {geoError && <p className="text-xs text-red-600 mt-1">{geoError}</p>}
-          {geo && (
-            <p className="text-xs text-emerald-700 mt-1">
-              Nalezeno: {geo.display_name} ({geo.latitude.toFixed(4)}, {geo.longitude.toFixed(4)})
-            </p>
-          )}
           <button
             type="button"
             onClick={doGeocode}
@@ -395,6 +398,31 @@ export default function FveAnalysisForm({
           >
             {geocoding ? "Hledám…" : "Vyhledat souřadnice"}
           </button>
+          {geoAttempted && !geoError && geoResults.length === 0 && (
+            <p className="text-xs text-slate-500 mt-2">
+              Nebylo nalezeno žádné místo pro „{city}".
+            </p>
+          )}
+          {geoResults.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {geoResults.map((r, i) => (
+                <li key={`${r.latitude},${r.longitude}`}>
+                  <button
+                    type="button"
+                    onClick={() => selectGeocode(r, i)}
+                    className={
+                      "w-full text-left text-xs rounded px-2 py-1 border " +
+                      (geoIndex === i
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                        : "border-slate-200 bg-white hover:bg-slate-100")
+                    }
+                  >
+                    {r.display_name} ({r.latitude.toFixed(4)}, {r.longitude.toFixed(4)})
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <button
