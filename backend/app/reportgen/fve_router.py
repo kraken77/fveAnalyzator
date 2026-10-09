@@ -143,29 +143,28 @@ def run_analysis(params: FveParams, user: User = Depends(ANY_ROLE)):
 
 @router.post("/fve-analysis/geocode")
 def geocode(payload: dict, user: User = Depends(ANY_ROLE)):
-    """Geokódování obce nebo města.
+    """Geokódování adresy nebo obce přes Nominatim.
 
-    Záměrně *název obce*, ne adresa: Open-Meteo geocoding je name search.
-    "Praha" najde, "Praha 1" nebo "Vodičkova 5" ne. UI to musí vysvětlit
-    místo, ne vracet tichou chybu, jinak uživatel neví proč adresa nenašla.
+    Vrací VÍC kandidátů; UI si z nich vybere tlačítkem. Nenalezeno je
+    prázdný seznam (200), ne 404 — s Nominatim se „nenalezeno" nedá
+    spolehlivě odlišit od „málo konkrétní dotaz".
     """
     address = (payload or {}).get("address", "").strip()
     if not address:
-        raise HTTPException(400, "Zadejte název obce")
-    from app.geocoder import get_coordinates
+        raise HTTPException(400, "Zadejte adresu nebo obec")
+    from app.geocoder import search
 
-    result = get_coordinates(address)
-    if not result:
-        raise HTTPException(
-            404,
-            f"Nebylo nalezeno žádné místo pro „{address}“. Zkuste název obce nebo města.",
-        )
-    # get_coordinates vrací lat/lon; FveParams má latitude/longitude —
-    # přejmenovat tady, ne aby si frontend pamatoval dvě podoby.
+    results = search(address)
+    # Nominatim vrací klíče lat/lon; FveParams má latitude/longitude.
     return {
-        "latitude": result["lat"],
-        "longitude": result["lon"],
-        "display_name": result.get("display_name", ""),
+        "results": [
+            {
+                "latitude": r["lat"],
+                "longitude": r["lon"],
+                "display_name": r["display_name"],
+            }
+            for r in results
+        ]
     }
 
 

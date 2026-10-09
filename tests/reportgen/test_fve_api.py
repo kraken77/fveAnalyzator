@@ -90,32 +90,36 @@ def test_customer_can_run_analysis(client, customer_token):
 # ---------- M3.3 geocode / appliances / economic ----------
 
 def test_geocode_finds_city(client, admin_token):
-    r = client.post("/api/v1/fve-analysis/geocode", json={"address": "Praha"},
+    """Nominatim vrací seznam kandidátů — i pro obec s více shodami."""
+    r = client.post("/api/v1/fve-analysis/geocode", json={"address": "Telnice"},
                     headers=_auth(admin_token))
     assert r.status_code == 200, r.text
-    assert 49 < r.json()["latitude"] < 51
+    results = r.json()["results"]
+    assert results, "Nominatim musí pro Telnici vrátit alespoň jeden výsledek"
+    first = results[0]
+    assert {"latitude", "longitude", "display_name"} <= set(first)
+    assert 48.0 < first["latitude"] < 52.0
+    assert first["display_name"]
 
 
 def test_geocode_rejects_empty(client, admin_token):
     r = client.post("/api/v1/fve-analysis/geocode", json={"address": "  "},
                     headers=_auth(admin_token))
     assert r.status_code == 400
-    # „obc" jako kmen — „obec"/„obce"/„obcí" jsou různé tvary
     detail = r.json()["detail"].lower()
-    assert "obc" in detail or "měst" in detail, detail
+    assert "adres" in detail or "obec" in detail, detail
 
 
-def test_geocode_explains_itself_when_not_found(client, admin_token):
-    """Open-Meteo je name search. Ulice nenajde — musí to říct, ne vrátit prázdno.
+def test_geocode_not_found_returns_empty_list(client, admin_token):
+    """S Nominatim se adresy najdou, takže „nenalezeno" = 200 + prázdné results.
 
-    Živý endpoint, ne mock: chceme vidět skutečnou hlášku, kterou
-    uživatel uvidí.
+    Živý endpoint, ne mock — chceme ověřit skutečné chování Nominatim.
     """
     r = client.post("/api/v1/fve-analysis/geocode",
-                    json={"address": "Vodičkova 5"}, headers=_auth(admin_token))
-    assert r.status_code == 404, r.text
-    detail = r.json()["detail"].lower()
-    assert "obc" in detail or "měst" in detail, detail
+                    json={"address": "qzxwvu12345neexistuje"},
+                    headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    assert r.json()["results"] == []
 
 
 def test_appliances_endpoint(client, admin_token):
