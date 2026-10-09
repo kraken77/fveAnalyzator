@@ -265,6 +265,7 @@ export interface FveMaterialLine {
   name?: string;
   category: string;
   rating?: number | null;
+  unit?: string;
   qty: number;
   unit_price: number;
   line_total: number;
