@@ -631,6 +631,22 @@ def test_energy_pdf_missing_energy_is_400(client, admin_token):
     assert r.status_code == 400
 
 
+def test_energy_pdf_non_dict_energy_is_400(client, admin_token):
+    """Číslo/místo dictu nesmí shodit endpoint neologovanou 500."""
+    for bad in (5, [1, 2], "textbook"):
+        r = client.post("/api/v1/fve-analysis/report/energy",
+                        json={"energy": bad, "economic": None},
+                        headers=_auth(admin_token))
+        assert r.status_code == 400, (bad, r.status_code)
+
+
+def test_energy_pdf_non_dict_economic_is_400(client, admin_token):
+    r = client.post("/api/v1/fve-analysis/report/energy",
+                    json={"energy": {"energy_balance_kwh": {}}, "economic": [1, 2]},
+                    headers=_auth(admin_token))
+    assert r.status_code == 400
+
+
 def test_energy_pdf_logs_exception_type(client, admin_token, caplog):
     """Selhání generátoru musí být v logu i v hlášce s typem výjimky."""
     import logging

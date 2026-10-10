@@ -244,8 +244,13 @@ def energy_pdf(payload: dict, user: User = Depends(ANY_ROLE)):
     payload = payload or {}
     energy = payload.get("energy")
     economic = payload.get("economic")
-    if not energy or "energy_balance_kwh" not in energy:
+    # `energy` musí být dict — jinak `"energy_balance_kwh" not in energy`
+    # vyhodí TypeError a z endpointu se stane neologovaná 500 (třída, kterou
+    # u `sections` řešil fix F4).
+    if not isinstance(energy, dict) or "energy_balance_kwh" not in energy:
         raise HTTPException(400, "Chybí výsledek analýzy")
+    if economic is not None and not isinstance(economic, dict):
+        raise HTTPException(400, "Neplatný výsledek ekonomické analýzy")
 
     # Variantu vynucuje role — zákazník si nesmí vyžádat interní rozpis.
     variant = payload.get("variant") or "company"
