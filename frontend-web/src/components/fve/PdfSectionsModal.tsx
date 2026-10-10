@@ -50,6 +50,10 @@ export default function PdfSectionsModal({
   const move = (idx: number, dir: -1 | 1) => {
     const j = idx + dir;
     if (j < 0 || j >= order.length) return;
+    // Rám (intro/slovník) je připnutý serverem — nedovol ho prohodit ani
+    // přes šipku souseda, ať zobrazené pořadí odpovídá výstupu PDF.
+    const isFrame = (id: string) => !!metas.find((m) => m.id === id)?.frame;
+    if (isFrame(order[idx]) || isFrame(order[j])) return;
     const next = [...order];
     [next[idx], next[j]] = [next[j], next[idx]];
     setOrder(next);
