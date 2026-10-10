@@ -254,6 +254,25 @@ export interface FveParams {
   battery_material_id: number | null;
   install_material_id: number | null;
   system_material_id: number | null;
+  /** Volba a pořadí oddílů PDF per varianta (perzistuje se v fve_params_json). */
+  pdf_sections?: PdfSectionsConfig;
+}
+
+/** Varianta PDF reportu: `customer` = nabídka, `company` = interní. */
+export type PdfVariant = "customer" | "company";
+
+/** Volba oddílů PDF zvlášť pro obě varianty (id z registru oddílů). */
+export interface PdfSectionsConfig {
+  customer?: string[];
+  company?: string[];
+}
+
+/** Metadata oddílu PDF z `GET /fve-analysis/report/sections`. */
+export interface ReportSectionMeta {
+  id: string;
+  label: string;
+  description: string;
+  base: boolean;
 }
 
 /** Jedna položka snímku sestavy, uložená v `fve_params_json`.

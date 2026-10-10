@@ -7,6 +7,8 @@ import type {
   FveGeocodeResult,
   FveMaterial,
   FveParams,
+  PdfVariant,
+  ReportSectionMeta,
   SavedAnalysis,
 } from "../types";
 
@@ -46,16 +48,27 @@ export const convertToOrder = (projectId: number | string) =>
     .then((r) => r.data);
 
 /** PDF jako blob — ne JSON, takže responseType: "blob".
- *  Ekonomika je volitelná; když chybí, PDF ji vynechá (chování jako dřív). */
+ *  Ekonomika je volitelná; když chybí, PDF ji vynechá (chování jako dřív).
+ *  `variant` a `sections` sanitizuje backend (zákazník vždy `customer`).
+ *  `sections === null` = nechat server dopočítat výchozí (vše zapnuté). */
 export const downloadEnergyPdf = (
   energy: FveAnalysisResult,
   economic: FveEconomicResult | null,
+  params: Partial<FveParams>,
+  variant: PdfVariant,
+  sections: string[] | null,
 ) =>
   client.post(
     "/fve-analysis/report/energy",
-    { energy, economic },
+    { energy, economic, params, variant, sections },
     { responseType: "blob" },
   );
+
+/** Metadata oddílů PDF pro modální výběr (id, label, popis, pevný základ). */
+export const fetchReportSections = () =>
+  client
+    .get<{ sections: ReportSectionMeta[] }>("/fve-analysis/report/sections")
+    .then((r) => r.data.sections);
 
 /** Katalog pro přepínač sestavy. Server filtruje `internal` podle role. */
 export const fetchFveMaterials = () =>

@@ -1,7 +1,26 @@
 import PlotlyChart from "./PlotlyChart";
+import PdfSectionsModal from "./PdfSectionsModal";
 import { downloadEnergyPdf, runEconomic } from "../../api/fve";
 import { useState } from "react";
-import type { FveAnalysisResult, FveEconomicResult, FveParams } from "../../types";
+import { hasAnyRole, useAuth } from "../../context/AuthContext";
+import type {
+  FveAnalysisResult,
+  FveEconomicResult,
+  FveParams,
+  PdfSectionsConfig,
+  PdfVariant,
+} from "../../types";
+
+const LS_KEY = "fve_pdf_sections";
+
+/** Uložená volba oddílů v localStorage (když nejde perzistovat k projektu). */
+function loadLsSections(): PdfSectionsConfig {
+  try {
+    return JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
 
 function Metric({ label, value, unit }: { label: string; value: number; unit: string }) {
   return (
@@ -19,12 +38,23 @@ const APP_SORT = (name: string) =>
   name === "Základní chod" ? 0 : name === "CELKEM" ? 2 : 1;
 
 export default function FveAnalysisResults(
-  { result, params }: { result: FveAnalysisResult; params: Partial<FveParams> },
+  {
+    result,
+    params,
+    onSaveSections,
+  }: {
+    result: FveAnalysisResult;
+    params: Partial<FveParams>;
+    onSaveSections?: (cfg: PdfSectionsConfig) => void | Promise<void>;
+  },
 ) {
+  const { user } = useAuth();
+  const isCompany = hasAnyRole(user, ["admin", "antelon", "sales"]);
   const [economic, setEconomic] = useState<FveEconomicResult | null>(null);
   const [econLoading, setEconLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [error, setError] = useState("");
+  const [modalVariant, setModalVariant] = useState<PdfVariant | null>(null);
 
   const loadEconomic = async () => {
     setEconLoading(true);
@@ -41,7 +71,7 @@ export default function FveAnalysisResults(
     }
   };
 
-  const downloadPdf = async () => {
+  const runDownload = async (variant: PdfVariant, sections: string[] | null) => {
     setPdfLoading(true);
     setError("");
     try {
@@ -54,13 +84,16 @@ export default function FveAnalysisResults(
         });
         setEconomic(econ);
       }
-      const res = await downloadEnergyPdf(result, econ);
+      const res = await downloadEnergyPdf(result, econ, params, variant, sections);
       const url = window.URL.createObjectURL(
         new Blob([res.data], { type: "application/pdf" }),
       );
       const a = document.createElement("a");
       a.href = url;
-      a.download = "Energeticka_analyza.pdf";
+      a.download =
+        variant === "customer"
+          ? "Energeticka_analyza_zakaznik.pdf"
+          : "Energeticka_analyza_firma.pdf";
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (e: any) {
@@ -68,6 +101,20 @@ export default function FveAnalysisResults(
     } finally {
       setPdfLoading(false);
     }
+  };
+
+  const savedSections = params.pdf_sections ?? loadLsSections();
+  const sectionsFor = (v: PdfVariant) => savedSections[v] ?? null;
+
+  const persistAndGenerate = async (variant: PdfVariant, ids: string[]) => {
+    const next: PdfSectionsConfig = { ...savedSections, [variant]: ids };
+    setModalVariant(null);
+    if (onSaveSections) {
+      await onSaveSections(next);
+    } else {
+      localStorage.setItem(LS_KEY, JSON.stringify(next));
+    }
+    await runDownload(variant, ids);
   };
 
   const e = result.energy_balance_kwh;
@@ -193,16 +240,46 @@ export default function FveAnalysisResults(
         </section>
       )}
 
-      <div className="flex justify-end border-t border-slate-200 pt-4">
-        <button
-          type="button"
-          onClick={downloadPdf}
-          disabled={pdfLoading}
-          className="border border-navy text-navy px-5 py-2.5 rounded-lg hover:bg-slate-50 disabled:opacity-50"
-        >
-          {pdfLoading ? "Generuji…" : "Stáhnout PDF"}
-        </button>
+      <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+        {isCompany ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setModalVariant("customer")}
+              disabled={pdfLoading}
+              className="border border-navy text-navy px-5 py-2.5 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+            >
+              PDF pro zákazníka
+            </button>
+            <button
+              type="button"
+              onClick={() => setModalVariant("company")}
+              disabled={pdfLoading}
+              className="bg-antelonGreen text-navy font-semibold px-5 py-2.5 rounded-lg hover:brightness-110 disabled:opacity-50"
+            >
+              PDF pro firmu
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => runDownload("customer", sectionsFor("customer"))}
+            disabled={pdfLoading}
+            className="border border-navy text-navy px-5 py-2.5 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+          >
+            {pdfLoading ? "Generuji…" : "Stáhnout PDF"}
+          </button>
+        )}
       </div>
+
+      {modalVariant && (
+        <PdfSectionsModal
+          variant={modalVariant}
+          initial={sectionsFor(modalVariant) ?? undefined}
+          onClose={() => setModalVariant(null)}
+          onGenerate={(ids) => persistAndGenerate(modalVariant, ids)}
+        />
+      )}
     </div>
   );
 }

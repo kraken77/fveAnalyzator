@@ -6,7 +6,7 @@ import ContactStep from "../components/fve/ContactStep";
 import FveAnalysisForm from "../components/fve/FveAnalysisForm";
 import FveAnalysisResults from "../components/fve/FveAnalysisResults";
 import { useAuth, hasAnyRole } from "../context/AuthContext";
-import type { FveAnalysisResult, FveAppliance, FveParams } from "../types";
+import type { FveAnalysisResult, FveAppliance, FveParams, PdfSectionsConfig } from "../types";
 
 type Tab = "form" | "results" | "contact";
 
@@ -81,6 +81,14 @@ export default function ProjectFveAnalysisPage() {
     }
   };
 
+  /** Uloží volbu oddílů PDF k projektu (do volného JSON `fve_params_json`). */
+  const saveSections = async (cfg: PdfSectionsConfig) => {
+    if (!project) return;
+    const next = { ...params, pdf_sections: cfg };
+    setParams(next);
+    await client.put(`/projects/${project.id}/params`, { fve_params: next });
+  };
+
   if (loadError) {
     return (
       <p className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
@@ -145,7 +153,9 @@ export default function ProjectFveAnalysisPage() {
         />
       )}
 
-      {tab === "results" && result && <FveAnalysisResults result={result} params={params} />}
+      {tab === "results" && result && (
+        <FveAnalysisResults result={result} params={params} onSaveSections={saveSections} />
+      )}
 
       {tab === "contact" && (
         <div className="space-y-3">
