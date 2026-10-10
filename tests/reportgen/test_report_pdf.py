@@ -290,5 +290,20 @@ def test_input_params_section_uses_rows_not_hardcoded():
     assert "7.77 Kč/kWh" in html
 
 
+def test_customer_variant_shows_aggregate_not_breakdown():
+    html = _render(_energy_data(), _economic(), variant="customer")
+    assert "FVE 10.0 kWp + baterie 10.0 kWh" in html
+    assert "300 000 Kč" in html
+    assert "Panel 550 Wp" not in html   # žádný rozpis komponent
+    assert "Cena/ks" not in html
+
+
+def test_company_variant_shows_breakdown():
+    html = _render(_energy_data(), _economic(), variant="company")
+    assert "Panel 550 Wp" in html
+    assert "Cena/ks" in html
+
+
+
 
 

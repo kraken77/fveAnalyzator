@@ -1,8 +1,25 @@
-<!-- Složení investice (varianta řešena v Task 6) -->
+<!-- Složení investice — dvě varianty -->
 <h3>Složení investice</h3>
 <p class="section-caption" style="color: #7f8c8d; font-size: 9pt;">
     Z čeho se investice skládá a kolik stojí.
 </p>
+{% if variant == "customer" %}
+<p style="font-size: 0.95em;">{{ investment_summary_text }}</p>
+<table style="font-size: 0.9em;">
+    <thead>
+        <tr>
+            <th>Položka</th>
+            <th class="text-right">Celkem</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr class="highlight">
+            <td><strong>CELKEM</strong></td>
+            <td class="text-right"><strong>{{ investment_cost_czk }}</strong></td>
+        </tr>
+    </tbody>
+</table>
+{% else %}
 <table style="font-size: 0.85em;">
     <thead>
         <tr>
@@ -29,3 +46,4 @@
         </tr>
     </tbody>
 </table>
+{% endif %}
