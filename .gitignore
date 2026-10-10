@@ -145,6 +145,8 @@ data/*.db
 data/*.db-journal
 data/backups/
 data/imports/
+data/*.bak
+data/*.bak-*
 frontend-web/node_modules/
 frontend-web/dist/
 frontend-web/.env
