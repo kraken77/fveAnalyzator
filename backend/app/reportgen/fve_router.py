@@ -33,6 +33,7 @@ from .storage import (
     generate_share_code,
     get_db,
 )
+from . import report_sections
 
 router = APIRouter(prefix="/api/v1", tags=["fve-analysis"])
 
@@ -40,6 +41,14 @@ logger = logging.getLogger(__name__)
 
 # Analýzu smí spočítat i zákazník — je to nástroj, ne interní proces.
 ANY_ROLE = require_roles("admin", "antelon", "customer", "buyer")
+
+# Kdo smí volit firemní (detailní) variantu PDF. Ostatní dostanou vždy
+# zákaznickou variantu — i kdyby ji v payloadu požadovali.
+COMPANY_ROLES = ("admin", "antelon", "sales")
+
+
+def _is_company(user: User) -> bool:
+    return any(user.has_role(r) for r in COMPANY_ROLES)
 
 
 class FveParams(BaseModel):
@@ -219,18 +228,35 @@ def run_economic(params: dict, user: User = Depends(ANY_ROLE)):
 def energy_pdf(payload: dict, user: User = Depends(ANY_ROLE)):
     """PDF energetické i ekonomické analýzy.
 
-    Payload: {"energy": {...}, "economic": {...} | null}. Ekonomika je
-    volitelná — když chybí, PDF sekci Ekonomická analýza i Přílohy A–D
-    vynechá. Legacy /report/energy je bez /api/v1 a bez auth.
+    Payload: {"energy": {...}, "economic": {...} | null,
+              "variant": "company"|"customer", "sections": [...],
+              "params": {...}}.
+
+    Ekonomika je volitelná — když chybí, PDF sekci Ekonomická analýza
+    i Přílohy A–D vynechá. `variant` a `sections` sanitizuje backend:
+    zákazník vždy dostane zákaznickou variantu a neznámá id oddílů se
+    ignorují. Legacy /report/energy je bez /api/v1 a bez auth.
     """
     from app.reporting import ReportGenerator
 
-    energy = (payload or {}).get("energy")
-    economic = (payload or {}).get("economic")
+    payload = payload or {}
+    energy = payload.get("energy")
+    economic = payload.get("economic")
     if not energy or "energy_balance_kwh" not in energy:
         raise HTTPException(400, "Chybí výsledek analýzy")
+
+    # Variantu vynucuje role — zákazník si nesmí vyžádat interní rozpis.
+    variant = payload.get("variant") or "company"
+    if not _is_company(user):
+        variant = "customer"
+
+    sections = report_sections.resolve_sections(
+        payload.get("sections"), has_economic=economic is not None)
+
     try:
-        pdf_bytes = ReportGenerator().generate_energy_report(energy, economic)
+        pdf_bytes = ReportGenerator().generate_energy_report(
+            energy, economic, variant=variant, sections=sections,
+            params=payload.get("params"))
     except Exception as e:
         logger.exception("Generování PDF selhalo: %s", type(e).__name__)
         raise HTTPException(
@@ -241,6 +267,16 @@ def energy_pdf(payload: dict, user: User = Depends(ANY_ROLE)):
         headers={"Content-Disposition": f'attachment; filename="{fname}"',
                  "X-Filename": fname},
     )
+
+
+@router.get("/fve-analysis/report/sections")
+def report_sections_metadata(user: User = Depends(ANY_ROLE)):
+    """Metadata oddílů PDF pro modální výběr ve frontendu.
+
+    Vrací id, label, popis a příznak `base` (pevný základ, nejde vypnout)
+    v kanonickém pořadí.
+    """
+    return {"sections": report_sections.sections_metadata()}
 
 
 def _create_customer(db: Session, contact: Contact) -> User:

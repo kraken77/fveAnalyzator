@@ -86,6 +86,7 @@ Nový modul `backend/app/reportgen` + `frontend-web`:
 
 - **Šablona Antelon** (Pentagon v2, 16:9): z CSV Shelly datalogeru (`Fáze A/B/C`, `Celkem`, `Time, V` / `Čas, Wh`, BOM, `0`=chybí). Podporuje 1 i více CSV (více měsíců se sloučí), denní + volitelně hodinový/15min profil. Přímá editace textů a vypínání sekcí, fotogalerie, QR sdílení.
 - **Šablony fveAnalyzator**: wrap existujících Energy/Economic/OTE reportů (WeasyPrint).
+- **PDF analýzy FVE — varianty a výběr oddílů**: report lze sestavit ve variantě `customer` (nabídka: souhrn investice bez rozpadu komponent) nebo `company` (interní: plný rozpis). Všechny oddíly jsou volitelné s pevným základem (Souhrnné výsledky, Ekonomická analýza, Složení investice) a rámem (úvod „Jak číst report", slovníček pojmů); pořadí volí klient. Backend variantu vynutí podle role. Volba oddílů se ukládá k analýze (`fve_params_json` → `pdf_sections`).
 - **Role**: `admin` (správa uživatelů/spotřebičů), `antelon` (všechny projekty, čistý PDF), `customer` (jen přiřazené projekty, čistý PDF), `anonymous` (teaser náhled `/p/{code}`, PDF s vodoznakem). Blur pro `teaser`/`internal` sekce.
 - API: `/api/v1/*` — auth, projekty, upload, data preview, generate, pdf download, share/QR, public preview, OTE, admin.
 

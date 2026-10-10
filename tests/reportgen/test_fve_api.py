@@ -3,6 +3,7 @@
 Autentizace jako v test_m5_admin_api.py: prihlaseni pres /api/v1/auth/login.
 """
 import pytest
+from unittest.mock import patch
 
 from reportgen import storage as st
 
@@ -645,3 +646,108 @@ def test_energy_pdf_logs_exception_type(client, admin_token, caplog):
     assert r.status_code == 500
     assert "RuntimeError" in r.json()["detail"]
     assert "RuntimeError" in caplog.text
+
+
+# ---------- PDF: metadata oddílů + varianty ----------
+
+def test_report_sections_metadata(client, admin_token):
+    r = client.get("/api/v1/fve-analysis/report/sections",
+                   headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    sections = r.json()["sections"]
+    ids = [s["id"] for s in sections]
+    assert ids[0] == "intro" and ids[-1] == "glossary"
+    assert {"summary", "economic_metrics", "investment_composition"} <= set(ids)
+    by_id = {s["id"]: s for s in sections}
+    assert by_id["summary"]["base"] is True
+    assert by_id["appendix_a"]["base"] is False
+    assert by_id["summary"]["label"] and by_id["summary"]["description"]
+
+
+def test_report_sections_metadata_requires_auth(client):
+    r = client.get("/api/v1/fve-analysis/report/sections")
+    assert r.status_code in (401, 422)
+
+
+def _spy_energy_pdf(captured):
+    """Zachytí argumenty, se kterými endpoint volá generátor PDF."""
+    def fake(self, data, economic=None, variant="company",
+             sections=None, params=None):
+        captured.update(data=data, economic=economic, variant=variant,
+                        sections=sections, params=params)
+        return b"%PDF-1.4 fake"
+    return fake
+
+
+def test_energy_pdf_company_is_default_variant(client, admin_token):
+    captured = {}
+    with patch("app.reporting.ReportGenerator.generate_energy_report",
+               _spy_energy_pdf(captured)):
+        r = client.post("/api/v1/fve-analysis/report/energy",
+                        json={"energy": {"energy_balance_kwh": {}}, "economic": None},
+                        headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    assert captured["variant"] == "company"
+
+
+def test_energy_pdf_customer_cannot_request_company_variant(client, customer_token):
+    """Zákazník nesmí vynutit firemní variantu ani když ji pošle."""
+    captured = {}
+    with patch("app.reporting.ReportGenerator.generate_energy_report",
+               _spy_energy_pdf(captured)):
+        r = client.post("/api/v1/fve-analysis/report/energy",
+                        json={"energy": {"energy_balance_kwh": {}},
+                              "economic": None, "variant": "company"},
+                        headers=_auth(customer_token))
+    assert r.status_code == 200, r.text
+    assert captured["variant"] == "customer"
+
+
+def test_energy_pdf_admin_respects_requested_variant(client, admin_token):
+    captured = {}
+    with patch("app.reporting.ReportGenerator.generate_energy_report",
+               _spy_energy_pdf(captured)):
+        r = client.post("/api/v1/fve-analysis/report/energy",
+                        json={"energy": {"energy_balance_kwh": {}},
+                              "economic": None, "variant": "customer"},
+                        headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    assert captured["variant"] == "customer"
+
+
+def test_energy_pdf_unknown_section_ids_ignored(client, admin_token):
+    captured = {}
+    with patch("app.reporting.ReportGenerator.generate_energy_report",
+               _spy_energy_pdf(captured)):
+        r = client.post("/api/v1/fve-analysis/report/energy",
+                        json={"energy": {"energy_balance_kwh": {}}, "economic": None,
+                              "sections": ["summary", "neexistuje", "glossary"]},
+                        headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    assert "neexistuje" not in captured["sections"]
+    # pevný základ se doplní (chování resolve_sections)
+    assert "summary" in captured["sections"]
+
+
+def test_energy_pdf_passes_params_through(client, admin_token):
+    captured = {}
+    with patch("app.reporting.ReportGenerator.generate_energy_report",
+               _spy_energy_pdf(captured)):
+        r = client.post("/api/v1/fve-analysis/report/energy",
+                        json={"energy": {"energy_balance_kwh": {}}, "economic": None,
+                              "params": {"price_power": 4.5}},
+                        headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    assert captured["params"] == {"price_power": 4.5}
+
+
+def test_energy_pdf_drops_economic_sections_without_economic(client, admin_token):
+    captured = {}
+    with patch("app.reporting.ReportGenerator.generate_energy_report",
+               _spy_energy_pdf(captured)):
+        r = client.post("/api/v1/fve-analysis/report/energy",
+                        json={"energy": {"energy_balance_kwh": {}}, "economic": None},
+                        headers=_auth(admin_token))
+    assert r.status_code == 200, r.text
+    assert "economic_metrics" not in captured["sections"]
+    assert "appendix_a" not in captured["sections"]

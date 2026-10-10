@@ -201,7 +201,8 @@ Všechno pod `/api/v1` má autentizaci. Bez ní jsou jen veřejné čtení
 | POST | `/fve-analysis/geocode` | Adresa/obec → seznam kandidátů (lat/lon) |
 | GET | `/fve-analysis/appliances` | Katalog spotřebičů |
 | POST | `/fve-analysis` | Uložit analýzu jako projekt (se sběrem kontaktu) |
-| POST | `/fve-analysis/report/energy` | PDF energetického reportu |
+| POST | `/fve-analysis/report/energy` | PDF energetického reportu (varianta `customer`/`company`, výběr oddílů `sections`, vstupy `params`) |
+| GET | `/fve-analysis/report/sections` | Metadata oddílů PDF (id, label, popis, `base`) pro modální výběr |
 | POST | `/projects/{id}/convert-to-order` | Převod rozpracované analýzy na zakázku |
 
 ### Zakázky a pipeline
