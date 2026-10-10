@@ -138,6 +138,32 @@ def test_economic_analysis_legacy_investment_fallback():
     assert r["investment_breakdown"] == []
 
 
+def test_economic_result_echoes_inputs_for_report():
+    """Legacy ekonomické PDF čte `annual_savings`/`years`/`sp500_return`/
+    `inflation`/`discount_rate` přímo z výsledku — musí je dostat."""
+    from app.fve_analysis import run_economic_analysis
+
+    r = run_economic_analysis({"annual_savings": 25000.0, "years": 25,
+                               "sp500_return": 8, "inflation": 3,
+                               "discount_rate": 8})
+    assert r["annual_savings"] == 25000.0
+    assert r["years"] == 25
+    assert r["sp500_return"] == 8
+    assert r["inflation"] == 3
+    assert r["discount_rate"] == 8
+
+
+def test_economic_result_echo_uses_defaults_when_missing():
+    from app.fve_analysis import run_economic_analysis
+
+    r = run_economic_analysis({})
+    assert r["years"] == 20
+    assert r["sp500_return"] == 8
+    assert r["inflation"] == 3
+    assert r["discount_rate"] == 8
+    assert r["annual_savings"] == 30000  # default shodný s calculate_investment_comparison
+
+
 def test_production_performance_never_exceeds_100_pct():
     """Optimum hledá přes sklon a bere winter_loss → poměr ≤ 100 % (bod 4b)."""
     r = run_energy_analysis({"kwp": 10.0})

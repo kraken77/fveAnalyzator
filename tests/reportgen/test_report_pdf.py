@@ -350,6 +350,32 @@ def test_company_variant_shows_breakdown():
     assert "Cena/ks" in html
 
 
+def test_legacy_economic_report_shows_real_inputs(monkeypatch):
+    """Konec-konce: výsledek ekonomiky → HTML legacy PDF má reálné hodnoty."""
+    from app.fve_analysis import run_economic_analysis
+
+    captured = {}
+
+    class _FakeHTML:
+        def __init__(self, string):
+            captured["html"] = string
+
+        def write_pdf(self):
+            return b"%PDF-1.4"
+
+    monkeypatch.setattr("app.reporting.HTML", _FakeHTML)
+    data = run_economic_analysis({"annual_savings": 25000.0, "years": 20})
+    ReportGenerator().generate_economic_report(data)
+
+    html = captured["html"]
+    assert "25 000 Kč" in html          # roční úspora
+    assert "20 let" in html             # období analýzy
+    # RULING T4: místo no-op `assert "- %" not in html` ověř reálné vstupy.
+    # Echo vrací float, takže Jinja renderuje "8.0"/"3.0" (ne "8"/"3");
+    # před opravou se renderovalo "None %" (klíče chyběly).
+    assert "8.0 %" in html and "3.0 %" in html
+
+
 
 
 

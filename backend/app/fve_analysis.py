@@ -521,6 +521,13 @@ def run_economic_analysis(params: Dict[str, Any]) -> Dict[str, Any]:
             "final_sp500_net_czk": final_sp500_net,
         },
         "investment_cost": investment_cost,
+        # Vstupní hodnoty zpět pro legacy PDF `economic_report.html`, které je
+        # čte přímo z výsledku (dřív chyběly → tisklo se "-"/prázdno).
+        "annual_savings": float(_p("annual_savings", 30000)),
+        "years": years,
+        "sp500_return": float(_p("sp500_return", 8)),
+        "inflation": float(_p("inflation", 3)),
+        "discount_rate": float(_p("discount_rate", 8)),
         "investment_breakdown": investment_breakdown,
         "plot": plot,
         "raw_data": df.to_dict(orient="records"),
