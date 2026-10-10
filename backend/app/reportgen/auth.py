@@ -72,14 +72,24 @@ def require_roles(*roles):
         return user
     return _checker
 
+# Zaměstnanecké role s interní viditelností (dispečink, interní materiály,
+# interní PDF). Drží se synchronně se storage.ROLES mínus "customer" —
+# hlídá test_internal_roles. Neznámá/překlepnutá role interní přístup NEDÁVÁ
+# (dřív stačilo být „cokoli jiného než customer“, což bylo příliš benevolentní).
+INTERNAL_ROLES = frozenset({
+    "admin", "antelon", "sales", "designer", "warehouse", "buyer",
+    "subsidy", "connection", "roofer", "electrician", "inspector",
+})
+
+
 def is_internal_user(user: Optional[User]) -> bool:
-    """Interní role (ne „customer“) — zaměstnanci vidí všechny zakázky v dispečinku."""
+    """Interní rolí vidí zaměstnanec všechny zakázky v dispečinku."""
     if user is None:
         return False
     roles = list(user.roles or [])
     if not roles and user.role:
         roles = [user.role]
-    return any(r != "customer" for r in roles)
+    return any(r in INTERNAL_ROLES for r in roles)
 
 
 def is_principal(user: Optional[User]) -> bool:
