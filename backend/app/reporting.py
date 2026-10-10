@@ -8,6 +8,7 @@ import base64
 import json
 import pandas as pd
 from .appliance_manager import ApplianceManager
+from .reportgen.report_sections import resolve_sections
 
 logger = logging.getLogger(__name__)
 
@@ -108,13 +109,17 @@ class ReportGenerator:
             add("Aktivní spotřebiče", ", ".join(apps))
         return rows
 
-    def _build_context(self, data, economic=None):
+    def _build_context(self, data, economic=None, variant="company",
+                       sections=None, params=None):
         """Postaví Jinja kontext pro energy_report.html.
 
         Oddělené od vykreslení (WeasyPrint), aby šel kontext testovat
         bez Chrome/kaleida — `plotly.io.to_image` se v testech mockuje.
         `economic` je volitelný; bez něj se ekonomická sekce i přílohy
         A–D vynechají (chování jako dřív).
+
+        `variant` ("customer"|"company"), `sections` (seřazená id oddílů)
+        a `params` (vstupy pro tabulku) mají defaulty = dnešní plný report.
         """
         plots_json = data.get("plots", {})
         charts_b64 = {}
@@ -200,6 +205,19 @@ class ReportGenerator:
             "monthly_summary": data.get("monthly_summary", []),
             "appliance_monthly_summary": data.get("appliance_monthly_summary", []),
         }
+
+        # Varianta, výběr/pořadí oddílů a souhrn investice
+        has_economic = economic is not None
+        context["variant"] = variant
+        context["variant_label"] = (
+            "nabídka pro zákazníka" if variant == "customer" else "interní")
+        context["sections"] = resolve_sections(sections, has_economic=has_economic)
+        context["input_params_rows"] = self._build_input_params(params)
+        context["investment_summary_text"] = (
+            f"FVE {self._format_number(data.get('kwp', 0.0), 1)} kWp + "
+            f"baterie {self._format_number(data.get('battery_capacity', 0.0), 1)} kWh "
+            f"včetně instalace a montáže"
+        )
 
         # Process Appliance Metrics
         if "appliance_metrics" in data:
@@ -290,13 +308,15 @@ class ReportGenerator:
         ]
         return context
 
-    def generate_energy_report(self, data, economic=None):
+    def generate_energy_report(self, data, economic=None, variant="company",
+                               sections=None, params=None):
         """Generuje PDF energetické (+ ekonomické) analýzy.
 
         `economic` je volitelný — bez něj se vynechá sekce Ekonomická
-        analýza i Přílohy A–D (chování jako dřív).
+        analýza i Přílohy A–D (chování jako dřív). `variant`/`sections`/
+        `params` mají defaulty = dnešní plný report (legacy volající beze změny).
         """
-        context = self._build_context(data, economic)
+        context = self._build_context(data, economic, variant, sections, params)
         template = self.env.get_template("energy_report.html")
         html_content = template.render(context)
         pdf_bytes = HTML(string=html_content).write_pdf()

@@ -213,3 +213,48 @@ def test_input_params_null_export_limit_means_no_limit():
     labels = {r["label"]: r["value"] for r in rows}
     assert labels["Limit exportu do sítě"] == "bez limitu"
 
+
+def test_context_default_sections_full_report():
+    ctx = ReportGenerator()._build_context(_energy_data(), _economic())
+    assert ctx["variant"] == "company"
+    assert ctx["variant_label"] == "interní"
+    assert "economic_metrics" in ctx["sections"]
+    assert "investment_composition" in ctx["sections"]
+    assert ctx["sections"][0] == "intro"
+    assert ctx["sections"][-1] == "glossary"
+
+
+def test_context_customer_variant_summary_and_label():
+    ctx = ReportGenerator()._build_context(
+        _energy_data(), _economic(), variant="customer")
+    assert ctx["variant_label"] == "nabídka pro zákazníka"
+    assert "FVE 10.0 kWp" in ctx["investment_summary_text"]
+    assert "10.0 kWh" in ctx["investment_summary_text"]
+    # detailní rozpis zůstává v kontextu (šablona ho pro zákazníka nepoužije)
+    assert ctx["investment_breakdown"][0]["name"] == "Panel 550 Wp"
+
+
+def test_context_subset_and_order():
+    ctx = ReportGenerator()._build_context(
+        _energy_data(), _economic(),
+        sections=["intro", "summary", "recommendations",
+                  "economic_metrics", "investment_composition", "glossary"])
+    assert ctx["sections"] == ["intro", "summary", "recommendations",
+                               "economic_metrics", "investment_composition", "glossary"]
+
+
+def test_context_drops_economic_sections_without_economic():
+    ctx = ReportGenerator()._build_context(_energy_data(), None, sections=None)
+    assert "economic_metrics" not in ctx["sections"]
+    assert "investment_composition" not in ctx["sections"]
+    assert ctx["sections"][0] == "intro"
+
+
+def test_context_input_params_rows_present():
+    ctx = ReportGenerator()._build_context(
+        _energy_data(), _economic(),
+        params={"price_power": 4.5, "sell_price_scheme": "fixed"})
+    labels = {r["label"]: r["value"] for r in ctx["input_params_rows"]}
+    assert labels["Cena silové energie"] == "4.50 Kč/kWh"
+
+
