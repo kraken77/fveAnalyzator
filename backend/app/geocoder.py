@@ -36,13 +36,18 @@ def search(address: str, limit: int = 6) -> list[dict]:
     response.raise_for_status()
     data = response.json() or []
 
-    results = [
-        {
-            "lat": float(item["lat"]),
-            "lon": float(item["lon"]),
-            "display_name": item.get("display_name", ""),
-        }
-        for item in data
-    ]
+    # Nominatim občas vrátí položku bez `lat`/`lon` nebo s nečíselnou hodnotou.
+    # Jeden vadný záznam nesmí shodit celé hledání (KeyError/ValueError → 500),
+    # proto ho přeskočíme. Jiné chyby (síť) se řeší výš přes raise_for_status.
+    results = []
+    for item in data:
+        try:
+            results.append({
+                "lat": float(item["lat"]),
+                "lon": float(item["lon"]),
+                "display_name": item.get("display_name", ""),
+            })
+        except (KeyError, TypeError, ValueError):
+            continue
     _CACHE[key] = results
     return results

@@ -88,3 +88,20 @@ def test_search_empty_input_does_not_hit_network(monkeypatch):
 
     monkeypatch.setattr(requests, "get", fake_get)
     assert geocoder.search("   ") == []
+
+
+def test_search_skips_malformed_entries(monkeypatch):
+    """Chybějící/nečíselné `lat`/`lon` se přeskočí, ne 500 (M5)."""
+    geocoder._CACHE.clear()
+
+    def fake_get(url, **kwargs):
+        return _fake_response([
+            {"lat": "50.6812", "lon": "13.9876", "display_name": "Dobré"},
+            {"display_name": "Bez souřadnic"},
+            {"lat": "nečíselné", "lon": "13.0", "display_name": "Vadné"},
+            {"lat": "49.1234", "lon": "16.5678", "display_name": "Taky dobré"},
+        ])
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    results = geocoder.search("Malformed")
+    assert [r["display_name"] for r in results] == ["Dobré", "Taky dobré"]

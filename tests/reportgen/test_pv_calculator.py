@@ -7,6 +7,7 @@ import pandas as pd
 
 from pv_calculator import (
     apply_temperature_derate,
+    fetch_pvgis_tmy_data,
     get_optimal_pv_production,
     get_pv_production,
 )
@@ -114,3 +115,49 @@ def test_optimum_never_below_actual_for_any_orientation():
             lat, 14.03227, 10.0, winter_loss_factor=10.0, weather_data=weather,
             surface_tilt=tilt, surface_azimuth=az)
         assert optimum >= actual - 1e-9, (lat, tilt, az, actual, optimum)
+
+
+def test_optimum_searches_southern_hemisphere_azimuth():
+    """Na jižní polokouli musí optimum hledat na azimutu 0°, ne 180° (bod 4b).
+
+    Voláno BEZ konkrétní orientace (žádný append kandidáta), takže optimum je
+    čisté maximum mříže na optimálním azimutu hemisféry. Pro lat = −33,87°
+    musí být ≥ výroba na reálném (35°, 0°); s natvrdo 180° by optimum spadlo
+    pod ni a test by padl.
+    """
+    weather = _weather(25.0)
+    actual_south = get_pv_production(
+        -33.87, 14.03227, 35, 0, 10.0,
+        winter_loss_factor=10.0, weather_data=weather)[1]
+    optimum = get_optimal_pv_production(
+        -33.87, 14.03227, 10.0,
+        winter_loss_factor=10.0, weather_data=weather)
+    assert optimum >= actual_south - 1e-9
+
+
+def test_optimum_never_below_actual_for_off_grid_azimuth_real_tmy():
+    """Reálná orientace (35°, 175°) mimo mříž 180° na skutečném TMY Ústí (I1).
+
+    Na reálném TMY Ústí z cache `data/weather_cache.db` (stejná data, která
+    čte `app.data_loader.load_production_data`) dává azimut 175° vyšší výrobu
+    než nejlepší mřížový kandidát na 180°. Invariant optimum ≥ actual proto
+    drží JEN díky tomu, že se reálná orientace přidá mezi kandidáty: bez
+    `candidates.append(...)` je optimum = mříž na 180° < actual a test padne.
+    Záměrně proto NEpředáváme syntetické počasí — diskriminuje jen reálná data.
+    """
+    from app.data_loader import load_production_data
+
+    _, actual, optimum = load_production_data(
+        kwp=10.0, latitude=50.6607, longitude=14.03227,
+        surface_tilt=35, surface_azimuth=175,
+    )
+
+    # Premisa diskriminace: mříž na 180° je opravdu horší než reálných 175°.
+    weather = fetch_pvgis_tmy_data(50.6607, 14.03227)
+    assert weather is not None
+    grid = get_optimal_pv_production(
+        50.6607, 14.03227, 10.0,
+        winter_loss_factor=10.0, weather_data=weather)
+    assert grid < actual
+
+    assert optimum >= actual - 1e-9

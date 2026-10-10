@@ -192,7 +192,10 @@ def get_optimal_pv_production(latitude, longitude, kwp, tz='UTC',
     best_azimuth = 180.0 if latitude >= 0 else 0.0
     candidates = [(tilt, best_azimuth) for tilt in range(10, 71, 5)]
     if surface_tilt is not None and surface_azimuth is not None:
-        candidates.append((surface_tilt, surface_azimuth))
+        # Na defaultní cestě (35°, 180°) je reálná orientace už v mříži;
+        # appending by přidal zbytečnou 14. iteraci identického kandidáta.
+        if (surface_tilt, surface_azimuth) not in candidates:
+            candidates.append((surface_tilt, surface_azimuth))
 
     best = None
     for tilt, azimuth in candidates:

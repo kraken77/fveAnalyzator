@@ -11,6 +11,11 @@ const SELL_SCHEMES = [
   { value: "spot", label: "Spot" },
 ] as const;
 
+/** Bezpečný formát souřadnice — prázdné (NaN) pole nesmí shodit render. */
+function fmtCoord(v?: number): string {
+  return typeof v === "number" && Number.isFinite(v) ? v.toFixed(4) : "—";
+}
+
 function NumberField({
   label, unit, min, max, step = 0.1, value, onChange, help,
 }: {
@@ -391,7 +396,7 @@ export default function FveAnalysisForm({
             />
           </label>
           <p className="text-xs text-slate-600 mt-1">
-            Použité souřadnice: {params.latitude.toFixed(4)}, {params.longitude.toFixed(4)}
+            Použité souřadnice: {fmtCoord(params.latitude)}, {fmtCoord(params.longitude)}
           </p>
           {geoError && <p className="text-xs text-red-600 mt-1">{geoError}</p>}
           <button
@@ -426,6 +431,12 @@ export default function FveAnalysisForm({
                 </li>
               ))}
             </ul>
+          )}
+          {geoResults.length > 0 && geoIndex === null && (
+            <p className="text-xs text-amber-600 mt-2">
+              Nenašli jste správné místo? Vyberte výsledek ze seznamu — použité
+              souřadnice se změní až po výběru.
+            </p>
           )}
         </div>
 
