@@ -30,6 +30,84 @@ class ReportGenerator:
         if value is None: return "-"
         return f"{value:,.{decimal}f}".replace(",", " ")
 
+    SCHEME_LABELS = {
+        "fixed": "Fixní cena",
+        "community": "Komunita",
+        "shared": "Sdílení",
+        "spot": "Spot",
+    }
+    # Schéma → (klíč ceny ve vstupech, label řádku)
+    SCHEME_PRICE = {
+        "fixed": ("price_sell", "Výkupní cena"),
+        "community": ("community_sell_price", "Výkupní cena (komunita)"),
+        "shared": ("shared_sell_price", "Výkupní cena (sdílení)"),
+        "spot": ("spot_price_margin", "Marže nad spotem"),
+    }
+    # Backendové defaulty pro chybějící vstupy (shodné s DEFAULT_FVE_PARAMS).
+    _PARAM_DEFAULTS = {
+        "kwp": 10.0, "battery_capacity": 10.0, "annual_consumption_mwh": 5.0,
+        "latitude": 50.6607, "longitude": 14.03227,
+        "price_power": 3.0, "price_distribution": 2.0,
+        "sell_price_scheme": "fixed", "price_sell": 2.0,
+        "community_sell_price": 1.5, "shared_sell_price": 2.54,
+        "spot_price_margin": 0.4, "surface_tilt": 35, "surface_azimuth": 180,
+        "system_loss_factor": 14.0, "winter_loss_factor": 10.0,
+        "thermal_battery_capacity_kwh": 0.0,
+        "thermal_battery_charge_power_kw": 2.0,
+    }
+
+    def _build_input_params(self, params):
+        """Řádky tabulky Vstupní parametry — jen smysluplné vstupy s jednotkami.
+
+        Interní/technické volby (`bom_mode`, `*_material_id`, `fve_materials`)
+        se záměrně neuvádějí.
+        """
+        p = dict(params or {})
+        defaults = self._PARAM_DEFAULTS
+
+        def val(key):
+            v = p.get(key, defaults.get(key))
+            return defaults.get(key) if v is None else v
+
+        rows = []
+
+        def add(label, value):
+            if value not in (None, ""):
+                rows.append({"label": label, "value": value})
+
+        add("Instalovaný výkon", f"{self._format_number(val('kwp'), 1)} kWp")
+        add("Kapacita baterie", f"{self._format_number(val('battery_capacity'), 1)} kWh")
+        add("Roční spotřeba", f"{self._format_number(val('annual_consumption_mwh'), 1)} MWh")
+        add("Lokalita (lat/lon)",
+            f"{self._format_number(val('latitude'), 5)}, "
+            f"{self._format_number(val('longitude'), 5)}")
+        add("Cena silové energie", f"{self._format_number(val('price_power'), 2)} Kč/kWh")
+        add("Cena distribuce", f"{self._format_number(val('price_distribution'), 2)} Kč/kWh")
+
+        scheme = p.get("sell_price_scheme") or defaults["sell_price_scheme"]
+        add("Schéma prodeje", self.SCHEME_LABELS.get(scheme, scheme))
+        price_key, price_label = self.SCHEME_PRICE.get(scheme, self.SCHEME_PRICE["fixed"])
+        add(price_label, f"{self._format_number(val(price_key), 2)} Kč/kWh")
+
+        add("Sklon střechy", f"{self._format_number(val('surface_tilt'), 0)}°")
+        add("Azimut", f"{self._format_number(val('surface_azimuth'), 0)}°")
+
+        limit = p.get("grid_export_limit_kw")
+        add("Limit exportu do sítě",
+            "bez limitu" if limit is None else f"{self._format_number(limit, 1)} kW")
+
+        add("Systémové ztráty", f"{self._format_number(val('system_loss_factor'), 0)} %")
+        add("Zimní ztráty", f"{self._format_number(val('winter_loss_factor'), 0)} %")
+        add("Tepelná baterie",
+            f"{self._format_number(val('thermal_battery_capacity_kwh'), 1)} kWh")
+        add("Dobíjení tepelné baterie",
+            f"{self._format_number(val('thermal_battery_charge_power_kw'), 1)} kW")
+
+        apps = p.get("active_appliances") or []
+        if apps:
+            add("Aktivní spotřebiče", ", ".join(apps))
+        return rows
+
     def _build_context(self, data, economic=None):
         """Postaví Jinja kontext pro energy_report.html.
 

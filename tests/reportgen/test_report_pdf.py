@@ -172,3 +172,44 @@ def test_chart_failure_is_logged_with_type(caplog):
         with caplog.at_level(logging.ERROR):
             ReportGenerator().generate_energy_report(_energy_data())
     assert "RuntimeError" in caplog.text
+
+
+def test_input_params_rows_cover_all_meaningful_inputs():
+    params = {
+        "kwp": 10.0, "battery_capacity": 10.0, "annual_consumption_mwh": 5.0,
+        "latitude": 50.6607, "longitude": 14.03227,
+        "price_power": 3.0, "price_distribution": 2.0,
+        "sell_price_scheme": "shared", "price_sell": 2.0,
+        "shared_sell_price": 2.54, "spot_price_margin": 0.4,
+        "surface_tilt": 35, "surface_azimuth": 180,
+        "grid_export_limit_kw": 10.0, "system_loss_factor": 14.0,
+        "winter_loss_factor": 10.0, "thermal_battery_capacity_kwh": 0.0,
+        "thermal_battery_charge_power_kw": 2.0, "active_appliances": ["Bazén"],
+        "bom_mode": "components", "panel_material_id": 1,
+    }
+    rows = ReportGenerator()._build_input_params(params)
+    labels = {r["label"]: r["value"] for r in rows}
+    assert "Cena silové energie" in labels
+    assert "Cena distribuce" in labels
+    assert labels["Schéma prodeje"] == "Sdílení"
+    assert "2.54" in labels["Výkupní cena (sdílení)"]
+    assert labels["Sklon střechy"] == "35°"
+    assert labels["Limit exportu do sítě"] == "10.0 kW"
+    assert labels["Aktivní spotřebiče"] == "Bazén"
+    # interní/technické se neuvádí
+    assert "bom_mode" not in " ".join(labels)
+    assert all("material_id" not in lbl for lbl in labels)
+
+
+def test_input_params_empty_params_use_backend_defaults():
+    rows = ReportGenerator()._build_input_params(None)
+    labels = {r["label"]: r["value"] for r in rows}
+    assert labels["Instalovaný výkon"] == "10.0 kWp"
+    assert labels["Výkupní cena"] == "2.00 Kč/kWh"  # default scheme=fixed, price_sell=2.0
+
+
+def test_input_params_null_export_limit_means_no_limit():
+    rows = ReportGenerator()._build_input_params({"grid_export_limit_kw": None})
+    labels = {r["label"]: r["value"] for r in rows}
+    assert labels["Limit exportu do sítě"] == "bez limitu"
+
