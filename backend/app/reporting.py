@@ -1,6 +1,7 @@
 import logging
 import os
 from jinja2 import Environment, FileSystemLoader
+from markupsafe import Markup, escape
 from weasyprint import HTML
 from datetime import datetime
 import plotly.io as pio
@@ -57,24 +58,37 @@ class ReportGenerator:
         "thermal_battery_charge_power_kw": 2.0,
     }
 
-    def _build_input_params(self, params):
+    def _build_input_params(self, params, data=None):
         """Řádky tabulky Vstupní parametry — jen smysluplné vstupy s jednotkami.
+
+        Hodnoty se berou v pořadí: explicitní `params` → `data` (výsledek
+        analýzy, obsahuje kwp/spotřebu/lokalitu) → backendové defaulty.
+        Legacy volající bez `params` tak neukážou vymyšlené hodnoty.
 
         Interní/technické volby (`bom_mode`, `*_material_id`, `fve_materials`)
         se záměrně neuvádějí.
         """
         p = dict(params or {})
+        d = dict(data or {})
         defaults = self._PARAM_DEFAULTS
 
         def val(key):
-            v = p.get(key, defaults.get(key))
-            return defaults.get(key) if v is None else v
+            for src in (p, d):
+                v = src.get(key)
+                if v is not None:
+                    return v
+            return defaults.get(key)
 
         rows = []
 
         def add(label, value):
             if value not in (None, ""):
-                rows.append({"label": label, "value": value})
+                # Environment má autoescape vypnutý → escapujeme sami;
+                # `active_appliances`/schéma prodeje může nést klientská data.
+                rows.append({
+                    "label": str(label),
+                    "value": Markup(escape(str(value))),
+                })
 
         add("Instalovaný výkon", f"{self._format_number(val('kwp'), 1)} kWp")
         add("Kapacita baterie", f"{self._format_number(val('battery_capacity'), 1)} kWh")
@@ -212,7 +226,7 @@ class ReportGenerator:
         context["variant_label"] = (
             "nabídka pro zákazníka" if variant == "customer" else "interní")
         context["sections"] = resolve_sections(sections, has_economic=has_economic)
-        context["input_params_rows"] = self._build_input_params(params)
+        context["input_params_rows"] = self._build_input_params(params, data)
         context["investment_summary_text"] = (
             f"FVE {self._format_number(data.get('kwp', 0.0), 1)} kWp + "
             f"baterie {self._format_number(data.get('battery_capacity', 0.0), 1)} kWh "

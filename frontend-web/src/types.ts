@@ -273,6 +273,8 @@ export interface ReportSectionMeta {
   label: string;
   description: string;
   base: boolean;
+  /** `"first"`/`"last"` = rám (server ho vynucuje zařadit první/poslední). */
+  frame?: "first" | "last" | null;
 }
 
 /** Jedna položka snímku sestavy, uložená v `fve_params_json`.

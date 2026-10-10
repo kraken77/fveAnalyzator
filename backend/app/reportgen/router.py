@@ -531,7 +531,7 @@ def generate_pdf(project_id: int, data: GenerateIn, user: User = Depends(get_cur
                 result = run_energy_analysis(valid)
                 from app.reporting import ReportGenerator
                 rg = ReportGenerator()
-                pdf_bytes = rg.generate_energy_report(result)
+                pdf_bytes = rg.generate_energy_report(result, params=fve_params)
                 params_snapshot = fve_params
             elif template == "economic":
                 from app.fve_analysis import (analysis_param_keys,

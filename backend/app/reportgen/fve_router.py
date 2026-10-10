@@ -40,7 +40,9 @@ router = APIRouter(prefix="/api/v1", tags=["fve-analysis"])
 logger = logging.getLogger(__name__)
 
 # Analýzu smí spočítat i zákazník — je to nástroj, ne interní proces.
-ANY_ROLE = require_roles("admin", "antelon", "customer", "buyer")
+# `sales` je firemní role (má i /convert-to-order), proto patří i sem —
+# jinak by dostal firemní tlačítka pro endpoit, na který mu vrátí 403.
+ANY_ROLE = require_roles("admin", "antelon", "sales", "customer", "buyer")
 
 # Kdo smí volit firemní (detailní) variantu PDF. Ostatní dostanou vždy
 # zákaznickou variantu — i kdyby ji v payloadu požadovali.
@@ -235,7 +237,7 @@ def energy_pdf(payload: dict, user: User = Depends(ANY_ROLE)):
     Ekonomika je volitelná — když chybí, PDF sekci Ekonomická analýza
     i Přílohy A–D vynechá. `variant` a `sections` sanitizuje backend:
     zákazník vždy dostane zákaznickou variantu a neznámá id oddílů se
-    ignorují. Legacy /report/energy je bez /api/v1 a bez auth.
+    ignorují. Legacy projektové PDF jde přes `POST /projects/{id}/generate`.
     """
     from app.reporting import ReportGenerator
 

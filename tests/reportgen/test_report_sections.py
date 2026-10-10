@@ -73,3 +73,21 @@ def test_metadata_flags_base():
     assert by_id["appendix_a"]["base"] is False
     assert by_id["summary"]["label"]
     assert by_id["summary"]["description"]
+
+
+def test_metadata_includes_frame():
+    by_id = {m["id"]: m for m in sections_metadata()}
+    assert by_id["intro"]["frame"] == "first"
+    assert by_id["glossary"]["frame"] == "last"
+    assert by_id["summary"]["frame"] is None
+
+
+def test_resolve_ignores_non_list_and_non_string():
+    """Malformed vstup (číslo/bool/dict položky) nesmí shodit 500."""
+    assert resolve_sections(123) == list(ALL_IDS)
+    assert resolve_sections(True) == list(ALL_IDS)
+    assert resolve_sections({"summary"}) == list(ALL_IDS)
+    # neřetězcové položky v seznamu se ignorují (dict je nehashovatelný)
+    out = resolve_sections(["summary", 42, None, {"x": 1}])
+    assert "summary" in out
+    assert all(isinstance(i, str) for i in out)

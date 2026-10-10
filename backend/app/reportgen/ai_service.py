@@ -218,7 +218,7 @@ def _run_offer_pdf(db, project, user):
     valid = {k: v for k, v in fve.items() if k in keys}
     res = fve_mod.run_energy_analysis(valid)
     from app.reporting import ReportGenerator
-    pdf_bytes = ReportGenerator().generate_energy_report(res)
+    pdf_bytes = ReportGenerator().generate_energy_report(res, params=fve)
     pv = _save_pdf(db, project, "energy", pdf_bytes, user)
     return {"pdf_version_id": pv.id, "template": "energy"}
 

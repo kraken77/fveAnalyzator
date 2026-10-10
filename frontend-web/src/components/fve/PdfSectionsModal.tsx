@@ -55,8 +55,8 @@ export default function PdfSectionsModal({
     setOrder(next);
   };
 
-  const toggle = (id: string, base: boolean) => {
-    if (base) return; // pevný základ nelze vypnout
+  const toggle = (id: string, fixed: boolean) => {
+    if (fixed) return; // pevný základ ani rám nelze vypnout
     setEnabled((s) => {
       const n = new Set(s);
       if (n.has(id)) n.delete(id);
@@ -72,8 +72,8 @@ export default function PdfSectionsModal({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-5">
         <h3 className="text-lg font-semibold text-navy mb-1">{label} — oddíly</h3>
         <p className="text-sm text-slate-500 mb-4">
-          Pevný základ je vždy součástí. Volitelné oddíly zapněte a šipkami
-          upravte pořadí.
+          Pevný základ i rám (úvod, slovníček) jsou vždy součástí a nejdou
+          vypnout. Volitelné oddíly zapněte a šipkami upravte pořadí.
         </p>
 
         {loading && <p className="text-sm text-slate-400">Načítám oddíly…</p>}
@@ -87,7 +87,8 @@ export default function PdfSectionsModal({
           {order.map((id, idx) => {
             const meta = metas.find((m) => m.id === id);
             if (!meta) return null;
-            const on = meta.base || enabled.has(id);
+            const fixed = meta.base || !!meta.frame;
+            const on = fixed || enabled.has(id);
             return (
               <li
                 key={id}
@@ -96,8 +97,8 @@ export default function PdfSectionsModal({
                 <input
                   type="checkbox"
                   checked={on}
-                  disabled={meta.base}
-                  onChange={() => toggle(id, meta.base)}
+                  disabled={fixed}
+                  onChange={() => toggle(id, fixed)}
                   className="h-4 w-4"
                 />
                 <div className="flex-1">
@@ -108,27 +109,34 @@ export default function PdfSectionsModal({
                         (pevný základ)
                       </span>
                     )}
+                    {!meta.base && meta.frame && (
+                      <span className="text-xs text-slate-400 ml-2">
+                        (rám — pořadí serverem)
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-slate-500">{meta.description}</div>
                 </div>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => move(idx, -1)}
-                    disabled={idx === 0}
-                    className="px-2 py-1 border rounded disabled:opacity-30"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => move(idx, 1)}
-                    disabled={idx === order.length - 1}
-                    className="px-2 py-1 border rounded disabled:opacity-30"
-                  >
-                    ↓
-                  </button>
-                </div>
+                {!meta.frame && (
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => move(idx, -1)}
+                      disabled={idx === 0}
+                      className="px-2 py-1 border rounded disabled:opacity-30"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => move(idx, 1)}
+                      disabled={idx === order.length - 1}
+                      className="px-2 py-1 border rounded disabled:opacity-30"
+                    >
+                      ↓
+                    </button>
+                  </div>
+                )}
               </li>
             );
           })}
@@ -144,7 +152,14 @@ export default function PdfSectionsModal({
           </button>
           <button
             type="button"
-            onClick={() => onGenerate(order.filter((i) => enabled.has(i)))}
+            onClick={() =>
+              onGenerate(
+                order.filter((i) => {
+                  const m = metas.find((x) => x.id === i);
+                  return enabled.has(i) || !!m?.base || !!m?.frame;
+                }),
+              )
+            }
             disabled={loading || error}
             className="px-4 py-2 text-sm bg-antelonGreen text-navy font-semibold rounded-lg disabled:opacity-50"
           >

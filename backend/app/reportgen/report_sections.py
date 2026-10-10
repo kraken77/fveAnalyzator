@@ -65,14 +65,16 @@ def resolve_sections(requested: list[str] | None, *, has_economic: bool = True) 
     """Vrátí seřazený seznam id k vykreslení (sanitizovaný).
 
     - `None` → kanonické pořadí všech oddílů.
-    - Neznámé id se ignorují.
+    - Neznámé id a neřetězce se ignorují; ne-`list` vstup = `None` (bez 500).
     - Pevný základ a rám se vždy doplní (intro první, slovník poslední).
     - Oddíly vyžadující ekonomiku se vynechají, když `has_economic=False`.
     """
+    if requested is not None and not isinstance(requested, list):
+        requested = None  # malformed payload → default, žádný 500
     if requested is None:
         ids = list(ALL_IDS)
     else:
-        ids = [i for i in requested if i in _BY_ID]
+        ids = [i for i in requested if isinstance(i, str) and i in _BY_ID]
         for s in SECTIONS:  # doplň chybějící pevný základ (kanonické pořadí)
             if s.base and s.id not in ids:
                 ids.append(s.id)
@@ -95,8 +97,13 @@ def resolve_sections(requested: list[str] | None, *, has_economic: bool = True) 
 
 
 def sections_metadata() -> list[dict]:
-    """Metadata oddílů pro frontend (modální výběr) v kanonickém pořadí."""
+    """Metadata oddílů pro frontend (modální výběr) v kanonickém pořadí.
+
+    `frame` je `"first"`/`"last"`/`None` — rám je serverem vždy vynucen,
+    frontend proto nesmí dovolit jeho vypnutí/přesun.
+    """
     return [
-        {"id": s.id, "label": s.label, "description": s.description, "base": s.base}
+        {"id": s.id, "label": s.label, "description": s.description,
+         "base": s.base, "frame": s.frame}
         for s in SECTIONS
     ]

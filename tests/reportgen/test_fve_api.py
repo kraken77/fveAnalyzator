@@ -669,6 +669,15 @@ def test_report_sections_metadata_requires_auth(client):
     assert r.status_code in (401, 422)
 
 
+def test_sales_can_access_report_sections(client, db_path):
+    """`sales` je firemní role (vidí tlačítka firmy) → nesmí dostat 403."""
+    _add_user(db_path, "salesrep@test.local", "sales")
+    token = _login(client, "salesrep@test.local", "Xx123456!")
+    r = client.get("/api/v1/fve-analysis/report/sections",
+                   headers=_auth(token))
+    assert r.status_code == 200, r.text
+
+
 def _spy_energy_pdf(captured):
     """Zachytí argumenty, se kterými endpoint volá generátor PDF."""
     def fake(self, data, economic=None, variant="company",

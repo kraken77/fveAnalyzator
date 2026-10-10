@@ -214,6 +214,52 @@ def test_input_params_null_export_limit_means_no_limit():
     assert labels["Limit exportu do sítě"] == "bez limitu"
 
 
+def test_input_params_use_data_when_params_missing():
+    """Legacy volající bez `params` nesmí ukázat vymyšlené hodnoty.
+
+    `data` (výsledek analýzy) nese kwp/spotřebu/lokalitu, takže se z něj
+    doplní — dřív tabulka tvrdila backendové defaulty (10.0 kWp apod.).
+    """
+    rows = ReportGenerator()._build_input_params(
+        None, {"kwp": 15.5, "battery_capacity": 12.0,
+               "annual_consumption_mwh": 7.5,
+               "latitude": 49.2, "longitude": 16.6})
+    labels = {r["label"]: r["value"] for r in rows}
+    assert labels["Instalovaný výkon"] == "15.5 kWp"
+    assert labels["Kapacita baterie"] == "12.0 kWh"
+    assert labels["Roční spotřeba"] == "7.5 MWh"
+    assert labels["Lokalita (lat/lon)"] == "49.20000, 16.60000"
+
+
+def test_input_params_params_override_data():
+    rows = ReportGenerator()._build_input_params({"kwp": 9.9}, {"kwp": 15.5})
+    labels = {r["label"]: r["value"] for r in rows}
+    assert labels["Instalovaný výkon"] == "9.9 kWp"
+
+
+def test_input_params_values_are_html_escaped():
+    """Klientská data se escapují — Jinja Environment má autoescape vypnutý."""
+    rows = ReportGenerator()._build_input_params({
+        "active_appliances": ["<img src=x onerror=alert(1)>"],
+        "sell_price_scheme": "<b>pwn</b>",
+    })
+    labels = {r["label"]: r["value"] for r in rows}
+    assert "<img" not in labels["Aktivní spotřebiče"]
+    assert "&lt;img" in labels["Aktivní spotřebiče"]
+    assert "<b>" not in labels["Schéma prodeje"]
+    assert "&lt;b&gt;" in labels["Schéma prodeje"]
+
+
+def test_render_legacy_without_params_uses_data_values():
+    """Legacy render (bez params) musí v PDF ukázat skutečný výkon z dat."""
+    data = _energy_data()
+    data["kwp"] = 15.5
+    data["battery_capacity"] = 12.0
+    html = _render(data, _economic())
+    assert "15.5 kWp" in html
+    assert "12.0 kWh" in html
+
+
 def test_context_default_sections_full_report():
     ctx = ReportGenerator()._build_context(_energy_data(), _economic())
     assert ctx["variant"] == "company"
