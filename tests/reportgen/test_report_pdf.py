@@ -277,4 +277,18 @@ def test_render_reorder_moves_section():
     assert html.index("Energetická Bilance") < html.index("Měsíční Statistika")
 
 
+def test_render_has_intro_captions_and_glossary():
+    html = _render(_energy_data(), _economic(), params={"price_power": 3.0})
+    assert "Jak číst tento report" in html
+    assert "Slovníček pojmů" in html
+    assert "NPV" in html  # slovníček
+    assert "Cena silové energie" in html  # tabulka vstupů
+
+
+def test_input_params_section_uses_rows_not_hardcoded():
+    html = _render(_energy_data(), _economic(), params={"price_power": 7.77})
+    assert "7.77 Kč/kWh" in html
+
+
+
 

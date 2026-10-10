@@ -1,9 +1,11 @@
-<!-- Vstupní parametry (Task 5 nahradí tabulkou input_params_rows) -->
-<h2>Vstupní Parametry</h2>
+<!-- Vstupní parametry -->
+<h2>Vstupní parametry</h2>
+<p class="section-caption" style="color: #7f8c8d; font-size: 9pt;">
+  Hodnoty, ze kterých se analýza počítala.
+</p>
 <table>
-    <tr><th>Parametr</th><th>Hodnota</th></tr>
-    <tr><td>Výkon FVE</td><td>{{ kwp }} kWp</td></tr>
-    <tr><td>Kapacita Baterie</td><td>{{ battery_capacity }} kWh</td></tr>
-    <tr><td>Roční Spotřeba</td><td>{{ annual_consumption }} MWh</td></tr>
-    <tr><td>Lokalita (Lat/Lon)</td><td>{{ latitude }} / {{ longitude }}</td></tr>
+    <tr><th>Parametr</th><th class="text-right">Hodnota</th></tr>
+    {% for row in input_params_rows %}
+    <tr><td>{{ row.label }}</td><td class="text-right">{{ row.value }}</td></tr>
+    {% endfor %}
 </table>
