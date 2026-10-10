@@ -1,0 +1,42 @@
+<!-- Grafy využití výroby a úspor -->
+<div style="display: table; width: 100%; margin-top: 20px;">
+    <div style="display: table-row;">
+        <div style="display: table-cell; width: 50%; padding-right: 10px;">
+            <h3 style="text-align: center;">Využití Výroby (Treemap)</h3>
+            {% if chart_energy_treemap %}
+            <div class="chart-container">
+                <img src="data:image/png;base64,{{ chart_energy_treemap }}" class="chart-img">
+            </div>
+            {% endif %}
+        </div>
+        <div style="display: table-cell; width: 50%; padding-left: 10px;">
+            <h3 style="text-align: center;">Využití Výroby (Podíl)</h3>
+            {% if chart_energy_pie %}
+            <div class="chart-container">
+                <img src="data:image/png;base64,{{ chart_energy_pie }}" class="chart-img">
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div style="display: table; width: 100%; margin-top: 20px;">
+    <div style="display: table-row;">
+        <div style="display: table-cell; width: 50%; padding-right: 10px;">
+            <h3 style="text-align: center;">Využití Výroby — Úspory (Treemap)</h3>
+            {% if chart_savings_treemap %}
+            <div class="chart-container">
+                <img src="data:image/png;base64,{{ chart_savings_treemap }}" class="chart-img">
+            </div>
+            {% endif %}
+        </div>
+        <div style="display: table-cell; width: 50%; padding-left: 10px;">
+            <h3 style="text-align: center;">Úspory (Podíl)</h3>
+            {% if chart_savings_pie %}
+            <div class="chart-container">
+                <img src="data:image/png;base64,{{ chart_savings_pie }}" class="chart-img">
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>

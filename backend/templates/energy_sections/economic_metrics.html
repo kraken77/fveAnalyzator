@@ -1,0 +1,17 @@
+<!-- Ekonomická analýza (pouze s ekonomikou) -->
+<div style="break-before: page;"></div>
+<h2>Ekonomická analýza</h2>
+<table>
+    <thead>
+        <tr><th>Metrika</th><th class="text-right">Hodnota</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Investice</td><td class="text-right">{{ investment_cost_czk }}</td></tr>
+        <tr><td>Návratnost</td><td class="text-right">{{ econ_payback }} let</td></tr>
+        <tr><td>Diskontovaná návratnost</td><td class="text-right">{{ econ_dpp }} let</td></tr>
+        <tr><td>Čistá současná hodnota (NPV)</td><td class="text-right">{{ econ_npv }}</td></tr>
+        <tr><td>Výnos FVE</td><td class="text-right">{{ econ_final_pv_gain }}</td></tr>
+        <tr><td>Výnos FVE s reinvesticí</td><td class="text-right">{{ econ_final_pv_reinvest_gain }}</td></tr>
+        <tr><td>Výnos S&amp;P500 (netto)</td><td class="text-right">{{ econ_final_sp500_net }}</td></tr>
+    </tbody>
+</table>

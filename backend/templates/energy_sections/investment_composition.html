@@ -1,0 +1,28 @@
+<!-- Složení investice (varianta řešena v Task 6) -->
+<h3>Složení investice</h3>
+<table style="font-size: 0.85em;">
+    <thead>
+        <tr>
+            <th>Komponenta</th>
+            <th class="text-right">Výkon</th>
+            <th class="text-right">Počet</th>
+            <th class="text-right">Cena/ks</th>
+            <th class="text-right">Celkem</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in investment_breakdown %}
+        <tr>
+            <td>{{ row.name }}</td>
+            <td class="text-right">{{ row.rating }}</td>
+            <td class="text-right">{{ row.qty }}</td>
+            <td class="text-right">{{ row.unit_price }}</td>
+            <td class="text-right">{{ row.line_total }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="highlight">
+            <td colspan="4"><strong>CELKEM</strong></td>
+            <td class="text-right"><strong>{{ investment_cost_czk }}</strong></td>
+        </tr>
+    </tbody>
+</table>

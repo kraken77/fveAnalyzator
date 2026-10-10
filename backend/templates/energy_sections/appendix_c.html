@@ -1,0 +1,24 @@
+<!-- Příloha C -->
+<h2 style="break-before: page;">Příloha C — Detail nastavení spotřebičů</h2>
+{% if appliance_definitions %}
+<table style="font-size: 0.8em;">
+    <thead>
+        <tr>
+            <th>Spotřebič</th>
+            <th class="text-right">Příkon</th>
+            <th>Typ</th>
+            <th>Logika / Popis</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for app in appliance_definitions %}
+        <tr>
+            <td><strong>{{ app.name }}</strong></td>
+            <td class="text-right">{{ app.power }}</td>
+            <td>{{ app.type }}</td>
+            <td>{{ app.description }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}

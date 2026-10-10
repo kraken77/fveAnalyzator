@@ -132,11 +132,11 @@ def test_report_survives_chart_failure():
     assert pdf[:4] == b"%PDF"
 
 
-def _render(data, economic=None):
+def _render(data, economic=None, sections=None, variant="company", params=None):
     """Postaví kontext a vyrenderuje šablonu — bez WeasyPrint."""
     gen = ReportGenerator()
     with patch("app.reporting.pio.to_image", return_value=b"PNG"):
-        ctx = gen._build_context(data, economic)
+        ctx = gen._build_context(data, economic, variant, sections, params)
     return gen.env.get_template("energy_report.html").render(ctx)
 
 
@@ -256,5 +256,25 @@ def test_context_input_params_rows_present():
         params={"price_power": 4.5, "sell_price_scheme": "fixed"})
     labels = {r["label"]: r["value"] for r in ctx["input_params_rows"]}
     assert labels["Cena silové energie"] == "4.50 Kč/kWh"
+
+
+def test_render_respects_sections_subset_and_order():
+    html = _render(_energy_data(), _economic(), sections=[
+        "intro", "summary", "recommendations",
+        "economic_metrics", "investment_composition", "glossary"])
+    assert "Doporučené strategie" in html
+    # vynechaný oddíl v PDF není
+    assert "Měsíční Bilance" not in html
+    assert "Příloha A" not in html
+    # pořadí: Doporučení před Ekonomickou analýzou
+    assert html.index("Doporučené strategie") < html.index("Ekonomická analýza")
+
+
+def test_render_reorder_moves_section():
+    html = _render(_energy_data(), _economic(), sections=[
+        "intro", "summary", "energy_balance", "monthly_stats",
+        "economic_metrics", "investment_composition", "glossary"])
+    assert html.index("Energetická Bilance") < html.index("Měsíční Statistika")
+
 
 

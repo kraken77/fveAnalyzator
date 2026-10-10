@@ -1,0 +1,33 @@
+<!-- Energetická bilance -->
+<h2>Energetická Bilance</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Položka</th>
+            <th class="text-right">Energie (kWh)</th>
+            <th class="text-right">Cena (Kč)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Celková spotřeba</td>
+            <td class="text-right">{{ balance.total_consumption_kwh }}</td>
+            <td class="text-right">{{ balance.total_cost_czk }}</td>
+        </tr>
+        <tr>
+            <td>Nákup ze sítě</td>
+            <td class="text-right">{{ balance.grid_import_kwh }}</td>
+            <td class="text-right">{{ balance.import_cost_czk }}</td>
+        </tr>
+        <tr>
+            <td>Export do sítě</td>
+            <td class="text-right">{{ balance.grid_export_kwh }}</td>
+            <td class="text-right">{{ balance.export_revenue_czk }}</td>
+        </tr>
+        <tr class="highlight">
+            <td><strong>Úspora z vlastní spotřeby</strong></td>
+            <td class="text-right"><strong>{{ balance.self_consumption_kwh }}</strong></td>
+            <td class="text-right"><strong>{{ balance.savings_self_ozk }}</strong></td>
+        </tr>
+    </tbody>
+</table>

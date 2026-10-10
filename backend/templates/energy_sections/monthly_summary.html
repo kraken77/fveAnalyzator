@@ -1,0 +1,30 @@
+<!-- Měsíční bilance -->
+{% if monthly_summary %}
+<h2>Měsíční Bilance</h2>
+<table style="font-size: 0.85em;">
+    <thead>
+        <tr>
+            <th>Měsíc</th>
+            <th class="text-right">Výroba (kWh)</th>
+            <th class="text-right">Spotřeba (kWh)</th>
+            <th class="text-right">Vlastní Spotř. (kWh)</th>
+            <th class="text-right">Export (kWh)</th>
+            <th class="text-right">Import (kWh)</th>
+            <th class="text-right">Úspora (Kč)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in monthly_summary %}
+        <tr>
+            <td>{{ row.month }}</td>
+            <td class="text-right">{{ row.production_kwh|round(1) }}</td>
+            <td class="text-right">{{ row.consumption_kwh|round(1) }}</td>
+            <td class="text-right">{{ row.self_consumption_kwh|round(1) }}</td>
+            <td class="text-right">{{ row.export_kwh|round(1) }}</td>
+            <td class="text-right">{{ row.import_kwh|round(1) }}</td>
+            <td class="text-right">{{ row.savings_czk|round(0) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}

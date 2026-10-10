@@ -1,0 +1,32 @@
+<!-- Příloha A -->
+<h2 style="break-before: page;">Příloha A — Detail Spotřebičů (ročně)</h2>
+{% if appliance_metrics %}
+<table style="font-size: 0.75em;">
+    <thead>
+        <tr>
+            <th>Spotřebič</th>
+            <th class="text-right">Úspora (Kč)</th>
+            <th class="text-right">Cena ze sítě (Kč)</th>
+            <th class="text-right">Z FVE (kWh)</th>
+            <th class="text-right">Ze sítě (kWh)</th>
+            <th class="text-right">Celkem (kWh)</th>
+            <th class="text-right">Pokrytí (%)</th>
+            <th class="text-right">Provoz (h/r)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for app in appliance_metrics %}
+        <tr {% if app.name=='CELKEM' %}style="background-color: #e9ecef; font-weight: bold;" {% elif app.name=='Základní chod' %}style="background-color: #f1f1f1;" {% endif %}>
+            <td><strong>{{ app.name }}</strong><br /><small>{{ app.description if app.description else '' }}</small></td>
+            <td class="text-right">{{ app.savings_czk }}</td>
+            <td class="text-right">{{ app.grid_cost_czk }}</td>
+            <td class="text-right">{{ app.fve_kwh }}</td>
+            <td class="text-right">{{ app.grid_kwh }}</td>
+            <td class="text-right">{{ app.total_kwh }}</td>
+            <td class="text-right">{{ app.coverage_pct }}%</td>
+            <td class="text-right">{{ app.operating_hours }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}

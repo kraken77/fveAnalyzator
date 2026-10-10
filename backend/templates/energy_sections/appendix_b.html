@@ -1,0 +1,34 @@
+<!-- Příloha B -->
+<h2 style="break-before: page;">Příloha B — Měsíční bilance spotřebičů (kWh)</h2>
+{% if appliance_monthly_summary %}
+<table style="font-size: 0.7em;">
+    <thead>
+        <tr>
+            <th>Měsíc</th>
+            <th>Spotřebič</th>
+            <th class="text-right">Úspora (Kč)</th>
+            <th class="text-right">Cena ze sítě (Kč)</th>
+            <th class="text-right">Z FVE (kWh)</th>
+            <th class="text-right">Ze sítě (kWh)</th>
+            <th class="text-right">Celkem (kWh)</th>
+            <th class="text-right">Pokrytí (%)</th>
+            <th class="text-right">Provoz (h/m)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in appliance_monthly_summary %}
+        <tr {% if row.appliance=='CELKEM' %}style="background-color: #e9ecef; font-weight: bold;" {% elif row.appliance=='Základní chod' %}style="background-color: #f9f9f9;" {% endif %}>
+            <td>{{ row.month }}</td>
+            <td><strong>{{ row.appliance }}</strong></td>
+            <td class="text-right">{{ row.savings_czk|round(1) }}</td>
+            <td class="text-right">{{ row.grid_cost_czk|round(1) }}</td>
+            <td class="text-right">{{ row.fve_kWh|round(1) }}</td>
+            <td class="text-right">{{ row.grid_kWh|round(1) }}</td>
+            <td class="text-right">{{ row.total_kWh|round(1) }}</td>
+            <td class="text-right">{{ row.coverage_pct|round(1) }}%</td>
+            <td class="text-right">{{ row.operating_hours }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}

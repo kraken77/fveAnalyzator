@@ -43,6 +43,11 @@ def test_resolve_drops_economic_sections_without_economic():
     out = resolve_sections(None, has_economic=False)
     assert "economic_metrics" not in out
     assert "investment_composition" not in out
+    # Přílohy A–D jsou vázané na ekonomiku (legacy: celá ekonomická půlka
+    # byla pod `{% if economic %}`) — bez ekonomiky se nevykreslují.
+    assert "appendix_a" not in out
+    assert "appendix_b" not in out
+    assert "appendix_c" not in out
     assert "appendix_d" not in out
     assert "summary" in out
 

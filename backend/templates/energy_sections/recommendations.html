@@ -1,0 +1,12 @@
+<!-- Doporučené strategie a scénáře -->
+{% if recommendations %}
+<div style="page-break-before: always;"></div>
+<h2>Doporučené strategie a scénáře</h2>
+<div class="recommendations">
+    {% for rec in recommendations %}
+    <div style="margin-bottom: 15px; padding: 10px; background-color: #f9f9f9; border-left: 4px solid #2ecc71;">
+        {{ rec|replace('**', '<strong>')|replace('**', '</strong>')|safe }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

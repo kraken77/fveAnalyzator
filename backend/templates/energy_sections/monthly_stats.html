@@ -1,0 +1,7 @@
+<!-- Měsíční statistika výroby a spotřeby -->
+{% if chart_monthly_stats %}
+<div class="chart-container">
+    <h3>Měsíční Statistika Výroby a Spotřeby</h3>
+    <img src="data:image/png;base64,{{ chart_monthly_stats }}" class="chart-img">
+</div>
+{% endif %}

@@ -1,0 +1,28 @@
+<!-- Příloha D -->
+<h2 style="break-before: page;">Příloha D — Ekonomický plán po jednotlivých letech</h2>
+{% if economic_year_rows %}
+<table style="font-size: 0.75em;">
+    <thead>
+        <tr>
+            <th>Rok</th>
+            <th class="text-right">Kumul. cash flow (Kč)</th>
+            <th class="text-right">Reinvestice (Kč)</th>
+            <th class="text-right">Diskont. kumul. CF (Kč)</th>
+            <th class="text-right">S&amp;P500 hodnota (Kč)</th>
+            <th class="text-right">S&amp;P500 netto (Kč)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in economic_year_rows %}
+        <tr>
+            <td>{{ row.year }}</td>
+            <td class="text-right">{{ row.pv_cumulative_cashflow }}</td>
+            <td class="text-right">{{ row.pv_reinvest_net_result }}</td>
+            <td class="text-right">{{ row.pv_cumulative_dcf }}</td>
+            <td class="text-right">{{ row.sp500_total_value }}</td>
+            <td class="text-right">{{ row.sp500_net_result }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
