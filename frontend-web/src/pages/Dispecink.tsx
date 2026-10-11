@@ -331,6 +331,9 @@ export default function Dispecink() {
                             />
                           </Tooltip>
                         ))}
+                        {phaseKey === "lead" && r.total === 0 && (
+                          <span className="text-xs text-slate-400">bez šablony</span>
+                        )}
                       </div>
                     </td>
                   ))}

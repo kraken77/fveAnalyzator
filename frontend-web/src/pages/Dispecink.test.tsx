@@ -15,12 +15,13 @@ vi.mock("../api/pipeline", () => {
     { id: 17, code: "F1", name: "Závěrečná fakturace", phase: "final", order: 30, status: "not_started" },
   ];
   const project = { id: 1, name: "K1", type: "rd", status: "active", customer_name: "Novák" };
+  const projectNoTemplate = { id: 2, name: "K2", type: "byt", status: "active", customer_name: "Malý" };
   return {
-    listProjects: vi.fn(async () => [project]),
-    getPipeline: vi.fn(async () => ({
-      project,
+    listProjects: vi.fn(async () => [project, projectNoTemplate]),
+    getPipeline: vi.fn(async (id: number | string) => ({
+      project: Number(id) === 2 ? projectNoTemplate : project,
       template: null,
-      steps,
+      steps: Number(id) === 2 ? [] : steps,
       events: [],
       groups: [],
     })),
@@ -60,25 +61,33 @@ describe("Dispecink — sloupce fází", () => {
   it("seskupí čtverečky po sloupcích a fázi pretoky dá do Nezařazeno", async () => {
     renderBoard();
     await screen.findByText("K1");
-    expect(within(screen.getByTestId("cell-lead")).getAllByRole("link")).toHaveLength(2);
-    expect(within(screen.getByTestId("cell-realizace")).getAllByRole("link")).toHaveLength(1);
-    expect(within(screen.getByTestId("cell-nezarazeno")).getAllByRole("link")).toHaveLength(2);
-    expect(within(screen.getByTestId("cell-smlouva")).queryAllByRole("link")).toHaveLength(0);
+    expect(within(screen.getAllByTestId("cell-lead")[0]).getAllByRole("link")).toHaveLength(2);
+    expect(within(screen.getAllByTestId("cell-realizace")[0]).getAllByRole("link")).toHaveLength(1);
+    expect(within(screen.getAllByTestId("cell-nezarazeno")[0]).getAllByRole("link")).toHaveLength(2);
+    expect(within(screen.getAllByTestId("cell-smlouva")[0]).queryAllByRole("link")).toHaveLength(0);
   });
 
   it("odkaz čtverečku míří na pipeline s fází a konkrétním krokem", async () => {
     renderBoard();
     await screen.findByText("K1");
-    const links = within(screen.getByTestId("cell-lead")).getAllByRole("link");
+    const links = within(screen.getAllByTestId("cell-lead")[0]).getAllByRole("link");
     expect(links[0].getAttribute("href")).toBe("/projects/1/pipeline?phase=lead&stepId=11");
   });
 
   it("hover nad čtverečkem zobrazí název aktivity v tooltipu", async () => {
     renderBoard();
     await screen.findByText("K1");
-    const link = within(screen.getByTestId("cell-lead")).getAllByRole("link")[0];
+    const link = within(screen.getAllByTestId("cell-lead")[0]).getAllByRole("link")[0];
     expect(screen.queryByRole("tooltip")).toBeNull();
     fireEvent.mouseEnter(link.parentElement!);
     expect(screen.getByRole("tooltip").textContent).toContain("Poptávka");
+  });
+
+  it("projekt bez šablony hlásí „bez šablony“ ve sloupci LEAD", async () => {
+    renderBoard();
+    const row = (await screen.findByText("K2")).closest("tr")!;
+    expect(within(row).getByTestId("cell-lead").textContent).toContain("bez šablony");
+    // jediné odkaz v řádku je název zakázky, žádné čtverečky
+    expect(within(row).getAllByRole("link")).toHaveLength(1);
   });
 });

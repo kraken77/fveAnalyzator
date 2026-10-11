@@ -4,8 +4,19 @@
 // v DB) se automaticky zařadí do "Nezařazeno".
 import type { PipelineStep } from "../types";
 
+/** Kanonické klíče sloupců; nová DB fáze bez mapování → "nezarazeno". */
+export type BoardPhaseKey =
+  | "lead"
+  | "priprava"
+  | "smlouva"
+  | "realizace"
+  | "predani"
+  | "revize"
+  | "nezarazeno"
+  | "final";
+
 export interface BoardPhase {
-  key: string;
+  key: BoardPhaseKey;
   label: string;
 }
 
@@ -20,22 +31,22 @@ export const BOARD_PHASES: BoardPhase[] = [
   { key: "final", label: "Finální" },
 ];
 
-const MAIN_KEYS = new Set(BOARD_PHASES.map((p) => p.key));
+const MAIN_KEYS = new Set<string>(BOARD_PHASES.map((p) => p.key));
 
 /** Hlavní sloupec pro fázi kroku; neznámá/nová fáze → Nezařazeno. */
-export function mainPhaseOf(phase: string): string {
-  return MAIN_KEYS.has(phase) ? phase : "nezarazeno";
+export function mainPhaseOf(phase: string): BoardPhaseKey {
+  return MAIN_KEYS.has(phase) ? (phase as BoardPhaseKey) : "nezarazeno";
 }
 
-export function boardPhaseLabel(key: string): string {
+export function boardPhaseLabel(key: BoardPhaseKey): string {
   return BOARD_PHASES.find((p) => p.key === key)?.label ?? key;
 }
 
 /** Seskupí kroky do všech 8 sloupců (i prázdných), uvnitř podle `order`. */
 export function groupStepsByBoardPhase(
   steps: PipelineStep[],
-): Array<[string, PipelineStep[]]> {
-  const map = new Map<string, PipelineStep[]>();
+): Array<[BoardPhaseKey, PipelineStep[]]> {
+  const map = new Map<BoardPhaseKey, PipelineStep[]>();
   for (const p of BOARD_PHASES) map.set(p.key, []);
   for (const s of steps) map.get(mainPhaseOf(s.phase))!.push(s);
   for (const arr of map.values()) arr.sort((a, b) => a.order - b.order);

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { hasAnyRole, useAuth } from "../context/AuthContext";
-import { BOARD_PHASES, mainPhaseOf } from "../constants/pipelinePhases";
+import { BOARD_PHASES, mainPhaseOf, type BoardPhaseKey } from "../constants/pipelinePhases";
 import {
   addInvoiceItem,
   addTimeEntry,
@@ -97,13 +97,18 @@ export default function PipelineDetail() {
   // aby deep-link z dispečinku fungoval bez dalšího stavu.
   const [searchParams, setSearchParams] = useSearchParams();
   const phaseParam = searchParams.get("phase");
-  const activePhase =
-    phaseParam && BOARD_PHASES.some((p) => p.key === phaseParam) ? phaseParam : null;
+  const activePhase = BOARD_PHASES.find((p) => p.key === phaseParam)?.key ?? null;
+  // stepId musí být číslo – jinak hrozí SyntaxError v querySelectoru
   const stepParam = searchParams.get("stepId");
+  const targetStepId = stepParam && /^\d+$/.test(stepParam) ? stepParam : null;
 
   const [flashStepId, setFlashStepId] = useState<string | null>(null);
+  // deep-link (scroll + blik) proběhne jednou za návštěvu daného kroku,
+  // aby se neopakoval po každém refresh()
+  const deepLinkDoneForRef = useRef<string | null>(null);
+  const flashTimerRef = useRef<number | null>(null);
 
-  const setPhaseTab = (key: string | null) => {
+  const setPhaseTab = (key: BoardPhaseKey | null) => {
     const next = new URLSearchParams(searchParams);
     if (key) next.set("phase", key);
     else next.delete("phase");
@@ -163,21 +168,27 @@ export default function PipelineDetail() {
     refresh();
   }, [refresh]);
 
-  // Dočasný zvýraznění cílového kroku z deep-linku (3 s).
+  // Deep-link: scroll + 3 s zvýraznění cílového kroku, počítáno od načtení
+  // dat. Proběhne jednou za návštěvu kroku – refresh() po akcích nesmí scroll
+  // zopakovat (stránka by "skákala" po každém kliknutí).
   useEffect(() => {
-    if (!stepParam) return;
-    setFlashStepId(stepParam);
-    const t = setTimeout(() => setFlashStepId(null), 3000);
-    return () => clearTimeout(t);
-  }, [stepParam]);
-
-  // Scroll na cílový krok po načtení pipeline.
-  useEffect(() => {
-    if (!view || !stepParam) return;
+    if (!view || !targetStepId) return;
+    if (deepLinkDoneForRef.current === targetStepId) return;
+    deepLinkDoneForRef.current = targetStepId;
+    setFlashStepId(targetStepId);
     document
-      .querySelector(`[data-step-id="${stepParam}"]`)
+      .querySelector(`[data-step-id="${targetStepId}"]`)
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [view, stepParam]);
+    // timer žije i při dalších bězích efektu (refresh), klidí ho jen unmount
+    flashTimerRef.current = window.setTimeout(() => setFlashStepId(null), 3000);
+  }, [view, targetStepId]);
+
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current !== null) window.clearTimeout(flashTimerRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (isAdmin) {
@@ -471,6 +482,12 @@ export default function PipelineDetail() {
               </button>
             ))}
           </div>
+
+          {visiblePhases.length === 0 && (
+            <div className="card p-6 text-center text-sm text-slateMuted">
+              Žádné kroky v této fázi.
+            </div>
+          )}
 
           {visiblePhases.map(([phase, steps]) => (
             <div key={phase}>

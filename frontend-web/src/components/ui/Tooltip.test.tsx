@@ -17,4 +17,20 @@ describe("Tooltip", () => {
     fireEvent.mouseLeave(screen.getByTestId("tip"));
     expect(screen.queryByRole("tooltip")).toBeNull();
   });
+
+  it("zobrazí tooltip při fokusu a skryje při blur (klávesnice)", () => {
+    render(
+      <Tooltip content="Fokus content" testId="tip">
+        <a href="/x">odkaz</a>
+      </Tooltip>,
+    );
+    // React onFocus/onBlur je postavený na focusin/focusout (bublují) –
+    // jako při skutečném focusu v prohlížeči.
+    const link = screen.getByRole("link");
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.focusIn(link);
+    expect(screen.getByRole("tooltip").textContent).toBe("Fokus content");
+    fireEvent.focusOut(link);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
 });
