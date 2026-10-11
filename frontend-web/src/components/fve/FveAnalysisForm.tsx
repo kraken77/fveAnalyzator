@@ -78,7 +78,8 @@ function buildBom(p: FveParams, mats: FveMaterial[]): FveMaterialLine[] {
     if (!m) return [];
     const price = Number(m.price ?? 0);
     return [{
-      material_id: Number(m.id), code: m.code, category: m.category,
+      material_id: Number(m.id), code: m.code, name: m.name,
+      category: m.category, rating: m.rating ?? null,
       qty: 1, unit_price: price, line_total: Number.isFinite(price) ? price : 0,
     }];
   }
@@ -96,7 +97,8 @@ function buildBom(p: FveParams, mats: FveMaterial[]): FveMaterialLine[] {
     const price = Number(m.price ?? 0);
     const lineTotal = qty * price;
     out.push({
-      material_id: Number(m.id), code: m.code, category: pick.category,
+      material_id: Number(m.id), code: m.code, name: m.name,
+      category: pick.category, rating: m.rating ?? null,
       qty, unit_price: price,
       // kwp/baterie mohou být během editace NaN (prázdné pole) — živý
       // součet nesmí ukázat NaN; backend je při uložení autoritativní.
