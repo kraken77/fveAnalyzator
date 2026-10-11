@@ -169,3 +169,31 @@ def test_production_performance_never_exceeds_100_pct():
     r = run_energy_analysis({"kwp": 10.0})
     pct = r["production_details"]["production_performance_pct"]
     assert pct <= 100.0 + 1e-6, f"production_performance_pct={pct}"
+
+
+def test_annual_yield_pin_usti_10kwp():
+    """Pin roční výroby Ústí 10 kWp (tilt 35°, az 180°) — rozhodnutí D1.
+
+    D1 (verifikace 2026-10-10 proti PVGIS PVcalc, loss=14, angle=35):
+    teplotní ztráta se NE-dvojí. Náš odhad s `winter_loss=None`
+    (izoluje teplotní derate) = 10275 kWh/rok (1027,5 kWh/kWp) vs
+    PVGIS 10295 kWh/rok (SARAH2) / 10327 kWh/rok (SARAH3) →
+    odchylka −0,2 % / −0,5 % (≤3 %) ⇒ `system_loss_factor=14.0` +
+    `apply_temperature_derate` jsou konzistentní s modelem PVGIS,
+    model se NEMĚNÍ.
+
+    Tento pin ukotvuje produkční konfiguraci (winter_loss_factor=10.0,
+    tj. co aplikace skutečně používá): 10156,6 kWh/rok ~ 1015,7 kWh/kWp.
+    Výroba z cache TMY (data/weather_cache.db, Ústí) je deterministická —
+    pásmo je úzké (±2 %).
+    """
+    from app.data_loader import load_production_data
+
+    _, total, _ = load_production_data(
+        kwp=10.0, latitude=50.6607, longitude=14.03227,
+        surface_tilt=35, surface_azimuth=180,
+        system_loss_factor=14.0, winter_loss_factor=10.0,
+    )
+    # přesná hodnota: 10156.5851 kWh → pásmo ±2 %: [9953.45, 10359.72]
+    assert 9953.45 <= total <= 10359.72, f"total_production={total:.1f} kWh"
+    assert 995.3 <= total / 10 <= 1036.0, f"kWh/kWp={total / 10:.2f}"
