@@ -231,7 +231,7 @@ Všechno pod `/api/v1` má autentizaci. Bez ní jsou jen veřejné čtení
 | Soubor | Co v něm | Pozor |
 |---|---|---|
 | `data/reportgen.db` | Projekty, pipeline, kroky, PDF verze, uživatelé | Jediný zdroj pravdy. Zálohuje se do `data/backups/` |
-| `data/weather_cache.db` | Cache počasí pro výpočet výroby | V dev prostředí obsahuje Prahu (50.0880 / 14.4208) a Ústí nad Labem (50.6607 / 14.03227). Jakákoli jiná lokalita čte dál ze sítě (PVGIS) — a v testech to znamená timeout |
+| `data/weather_cache.db` | Cache počasí pro výpočet výroby | V dev prostředí obsahuje čtyři lokality: Prahu (50.0880 / 14.4208), Ústí nad Labem (50.6607 / 14.03227), 50.7170082 / 13.9644984 a Brno (49.2 / 16.6). Jakákoli jiná lokalita čte dál ze sítě (PVGIS) — a v testech to znamená timeout |
 | `data/spot_market.db` | Spotové ceny OTE | Prázdná — skripty chybí |
 | `data/projects/<id>/` | Nahrané soubory projektu (CSV Shelly, fotky) | |
 | `data/pdfs/` | Vygenerované PDF | |
@@ -335,8 +335,8 @@ aserce mají rezervu řádově 10⁴ nad tímto šumem — neosazovat to je
 záměrná volba, ne nedopatření.
 
 Testy navíc musí používat souřadnice z `weather_cache.db` (Praha 50.0880 /
-14.4208 nebo Ústí nad Labem 50.6607 / 14.03227). Jakákoli jiná lokalita
-jde na síť a timeoutuje.
+14.4208, Ústí nad Labem 50.6607 / 14.03227, 50.7170082 / 13.9644984 nebo
+Brno 49.2 / 16.6). Jakákoli jiná lokalita jde na síť a timeoutuje.
 
 ### Který test hlídá co
 

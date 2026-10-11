@@ -235,8 +235,9 @@ Testy nepotřebují běžící aplikaci ani síť a nesahají na vývojovou
 databázi — každý dostává vlastní dočasnou SQLite. Dvě věci, které je
 třeba vědět, když něco selhává:
 
-- **Používejte souřadnice z `data/weather_cache.db`** (v dev cache jsou
-  Praha 50.0880 / 14.4208 a Ústí nad Labem 50.6607 / 14.03227).
+- **Používejte souřadnice z `data/weather_cache.db`** (dev cache má čtyři
+  lokality: Praha 50.0880 / 14.4208, Ústí nad Labem 50.6607 / 14.03227,
+  50.7170082 / 13.9644984 a Brno 49.2 / 16.6).
   Jakákoli jiná lokalita jde na síť k PVGIS a test timeoutuje.
 - **Testy jsou záměrně neosazené.** Spotřební data se generují s
   `np.random.normal(0, 0.1)`, takže dva běhy se liší o ~0.005 %. Aserce
