@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { hasAnyRole, useAuth } from "../context/AuthContext";
+import { BOARD_PHASES, mainPhaseOf } from "../constants/pipelinePhases";
 import {
   addInvoiceItem,
   addTimeEntry,
@@ -92,6 +93,24 @@ export default function PipelineDetail() {
 
   const [active, setActive] = useState<TabId>("pipeline");
 
+  // Sub-taby fází: single source of truth je URL (?phase=…&stepId=…),
+  // aby deep-link z dispečinku fungoval bez dalšího stavu.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const phaseParam = searchParams.get("phase");
+  const activePhase =
+    phaseParam && BOARD_PHASES.some((p) => p.key === phaseParam) ? phaseParam : null;
+  const stepParam = searchParams.get("stepId");
+
+  const [flashStepId, setFlashStepId] = useState<string | null>(null);
+
+  const setPhaseTab = (key: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (key) next.set("phase", key);
+    else next.delete("phase");
+    next.delete("stepId");
+    setSearchParams(next, { replace: true });
+  };
+
   // inline plan form
   const [planStepId, setPlanStepId] = useState<string | number | null>(null);
   const [planDate, setPlanDate] = useState("");
@@ -143,6 +162,22 @@ export default function PipelineDetail() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Dočasný zvýraznění cílového kroku z deep-linku (3 s).
+  useEffect(() => {
+    if (!stepParam) return;
+    setFlashStepId(stepParam);
+    const t = setTimeout(() => setFlashStepId(null), 3000);
+    return () => clearTimeout(t);
+  }, [stepParam]);
+
+  // Scroll na cílový krok po načtení pipeline.
+  useEffect(() => {
+    if (!view || !stepParam) return;
+    document
+      .querySelector(`[data-step-id="${stepParam}"]`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [view, stepParam]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -305,6 +340,10 @@ export default function PipelineDetail() {
     });
   }, [view]);
 
+  const visiblePhases = activePhase
+    ? phases.filter(([phase]) => mainPhaseOf(phase) === activePhase)
+    : phases;
+
   const formatAiOutput = (out: Record<string, unknown> | undefined): string => {
     if (!out) return "";
     const pick = (k: string) => {
@@ -406,7 +445,34 @@ export default function PipelineDetail() {
             </Link>
           </div>
 
-          {phases.map(([phase, steps]) => (
+          {/* sub-taby fází (deep-link z dispečinku: ?phase=…&stepId=…) */}
+          <div className="flex gap-1 flex-wrap" data-testid="phase-tabs">
+            <button
+              onClick={() => setPhaseTab(null)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition ${
+                activePhase === null
+                  ? "bg-slate-800 text-white border-slate-800"
+                  : "bg-white text-slateMuted border-slate-200 hover:border-slate-400"
+              }`}
+            >
+              Vše
+            </button>
+            {BOARD_PHASES.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setPhaseTab(p.key)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full border transition ${
+                  activePhase === p.key
+                    ? "bg-slate-800 text-white border-slate-800"
+                    : "bg-white text-slateMuted border-slate-200 hover:border-slate-400"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {visiblePhases.map(([phase, steps]) => (
             <div key={phase}>
               <h2 className="text-sm font-bold uppercase tracking-wide text-slateMuted mb-2">
                 {PHASE_LABEL[phase] ?? phase}
@@ -415,7 +481,14 @@ export default function PipelineDetail() {
                 {steps.map((s) => {
                   const ai = s.ai;
                   return (
-                  <div key={String(s.id)} className={`card p-3 sm:p-4 ${planStepId === s.id ? "ring-2 ring-antelonGreen" : ""}`}>
+                  <div
+                    key={String(s.id)}
+                    data-step-id={String(s.id)}
+                    data-highlighted={flashStepId === String(s.id) ? "true" : undefined}
+                    className={`card p-3 sm:p-4 ${
+                      planStepId === s.id || flashStepId === String(s.id) ? "ring-2 ring-antelonGreen" : ""
+                    }`}
+                  >
                     <div className="flex flex-col lg:flex-row lg:items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">

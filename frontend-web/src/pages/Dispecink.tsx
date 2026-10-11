@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { hasAnyRole, useAuth } from "../context/AuthContext";
+import { BOARD_PHASES, groupStepsByBoardPhase } from "../constants/pipelinePhases";
+import { Tooltip } from "../components/ui/Tooltip";
 import {
   getPipeline,
   importDispecink,
@@ -66,7 +68,6 @@ export default function Dispecink() {
   const [busyImport, setBusyImport] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const headphonesRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -280,7 +281,11 @@ export default function Dispecink() {
                 <th className="px-3 py-2">Zakázka</th>
                 <th className="px-3 py-2 hidden md:table-cell">Typ</th>
                 <th className="px-3 py-2">Stav</th>
-                <th className="px-3 py-2">Pipeline</th>
+                {BOARD_PHASES.map((p) => (
+                  <th key={p.key} className="px-2 py-2 whitespace-nowrap">
+                    {p.label}
+                  </th>
+                ))}
                 <th className="px-3 py-2 text-right">Hotovo</th>
               </tr>
             </thead>
@@ -315,29 +320,20 @@ export default function Dispecink() {
                       {r.project.status ?? "—"}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
-                    {r.steps.length === 0 ? (
-                      <span className="text-xs text-slate-400">bez šablony</span>
-                    ) : (
-                      <div
-                        ref={headphonesRef}
-                        className="flex items-center gap-0.5"
-                      >
-                        {r.steps.slice(0, 30).map((s, idx) => (
-                          <Link
-                            key={String(s.id)}
-                            to={`/projects/${r.project.id}/pipeline`}
-                            title={`${s.name} (${s.status})`}
-                            className={`w-2.5 h-5 rounded-sm ${STATUS_COLORS[s.status] ?? "bg-slate-200"}`}
-                            style={{ opacity: idx >= 25 ? 0.55 : 1 }}
-                          />
+                  {groupStepsByBoardPhase(r.steps).map(([phaseKey, phaseSteps]) => (
+                    <td key={phaseKey} data-testid={`cell-${phaseKey}`} className="px-2 py-2">
+                      <div className="flex items-center gap-0.5 flex-wrap">
+                        {phaseSteps.map((s) => (
+                          <Tooltip key={String(s.id)} content={`${s.name} (${s.status})`}>
+                            <Link
+                              to={`/projects/${r.project.id}/pipeline?phase=${phaseKey}&stepId=${s.id}`}
+                              className={`w-2.5 h-5 rounded-sm ${STATUS_COLORS[s.status] ?? "bg-slate-200"}`}
+                            />
+                          </Tooltip>
                         ))}
-                        {r.steps.length > 30 && (
-                          <span className="text-[10px] text-slate-400 ml-1">+{r.steps.length - 30}</span>
-                        )}
                       </div>
-                    )}
-                  </td>
+                    </td>
+                  ))}
                   <td className="px-3 py-2 text-right">
                     <span className="text-xs font-semibold">
                       {r.doneCount}/{r.total}
@@ -353,7 +349,7 @@ export default function Dispecink() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-slate-400 text-sm">
+                  <td colSpan={4 + BOARD_PHASES.length + 1} className="px-3 py-8 text-center text-slate-400 text-sm">
                     Žádné zakázky.
                   </td>
                 </tr>
