@@ -179,7 +179,9 @@ export default function PipelineDetail() {
     document
       .querySelector(`[data-step-id="${targetStepId}"]`)
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    // timer žije i při dalších bězích efektu (refresh), klidí ho jen unmount
+    // timer žije i při dalších bězích efektu (refresh), klidí ho jen unmount;
+    // při změně stepId ve stejné mountu přednost nenecháváme starému
+    if (flashTimerRef.current !== null) window.clearTimeout(flashTimerRef.current);
     flashTimerRef.current = window.setTimeout(() => setFlashStepId(null), 3000);
   }, [view, targetStepId]);
 
@@ -485,7 +487,7 @@ export default function PipelineDetail() {
 
           {visiblePhases.length === 0 && (
             <div className="card p-6 text-center text-sm text-slateMuted">
-              Žádné kroky v této fázi.
+              {activePhase ? "Žádné kroky v této fázi." : "Projekt zatím nemá žádné kroky."}
             </div>
           )}
 
