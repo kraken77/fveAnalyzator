@@ -28,28 +28,30 @@ npm run build   # tsc -b (typecheck) && vite build — hlavní brána frontendu
 npm run lint    # oxlint; ~19 pre-existing warningů je normál, exit 0
 
 # Dev server: vite proxy cílí defaultně na :8000, jinak musí odpovídat backendu
-VITE_DEV_PROXY_TARGET=http://127.0.0.1:8051 npm run dev
+VITE_DEV_PROXY_TARGET=http://127.0.0.1:8052 npm run dev
 ```
 
 Dvě instance (obě z tohoto checkoutu, sdílí `./data`):
 
 ```bash
-docker compose up -d --build                             # vývoj: web :3001, API :8051
-docker compose -f docker-compose.prod.yml up -d --build  # produkce: web :3100, API :8052
+docker compose up -d --build                             # vývoj: web :3100, API :8052
+docker compose -f docker-compose.prod.yml up -d --build  # produkce: web :3001, API :8051
 ```
 
 ## Produkce a nasazení
 
 - Produkce = compose projekt `antelon-prod` (`docker-compose.prod.yml`) na tomto
-  stroji (drakisa, 192.168.119.167): web `:3100`, API `:8052`. Veřejně
+  stroji (drakisa, 192.168.119.167): web `:3001`, API `:8051`. Veřejně
   **https://fve.etikos.cz** (DNS → 109.202.78.51): TLS se terminuje na
   okrajové krabici 192.168.119.20 (nginx; Let's Encrypt wildcard certifikáty
   pro etikos.cz / drakisa.cz / rabiav.cz, ACME webroot přes Apache na portu 80).
-  Fve vhost proxyuje web na `:3100` a `/api/` na `:8052` — tj. na produkci.
+  Fve vhost proxyuje web na `:3001` a `/api/` na `:8051` — tj. na produkci.
+  (Produkcí drží „dev porty“, protože na ně míří upstream na .20 — změna portů
+  by vyžadovala dotek .20.)
 - Veřejný port 80 se forwarduje na `.20:80` (Apache); před migrací tam byl
   webif MikroTik routeru. `etikos-nginx` (`/home/roman/etikos/nginx/nginx.conf`,
   mimo repo) je teď jen LAN — není to veřejný vstup.
-- Vývoj = projekt `antelon-energy` (`docker-compose.yml`): web `:3001`, API `:8051`
+- Vývoj = projekt `antelon-energy` (`docker-compose.yml`): web `:3100`, API `:8052`
   (veřejně nevystavený). Vývojový backend je bind-mount (stačí restart);
   produkční backend mount nemá → nasazení = `docker compose -f docker-compose.prod.yml
   up -d --build` (kód se zapeče do image z aktuálního stavu checkoutu).
@@ -62,7 +64,7 @@ docker compose -f docker-compose.prod.yml up -d --build  # produkce: web :3100, 
 - `deploy.sh` + `/home/roman/apps/antelon-energy` je stará opuštěná cesta
   (zářijový checkout, vlastní nepushnuté commity, stará data) — nepoužívat.
 - Sdílené odkazy/QR (`/p/{code}`) staví z `RG_PUBLIC_URL`: prod default
-  `https://fve.etikos.cz`, dev `http://localhost:3001`.
+  `https://fve.etikos.cz`, dev `http://localhost:3100`.
 
 ## Konvence
 

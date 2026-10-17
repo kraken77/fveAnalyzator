@@ -51,7 +51,7 @@ This project provides a comprehensive toolkit for analyzing PV power plant feasi
 
 Nejjednodušší způsob pro spuštění celé aplikace.
 
-1. **Zkontrolujte volné porty** (vývojový compose používá 3001/8051; produkční `docker-compose.prod.yml` 3100/8052):
+1. **Zkontrolujte volné porty** (vývojový compose používá 3100/8052; produkční `docker-compose.prod.yml` 3001/8051):
 
     ```bash
     ss -tln | grep -E "3001|3100|8051|8052"
@@ -64,8 +64,8 @@ Nejjednodušší způsob pro spuštění celé aplikace.
     ```
 
 3. **Otevřete aplikaci:**
-    - Web (React): [http://localhost:3001](http://localhost:3001)
-    - Backend API (FastAPI): [http://localhost:8051/docs](http://localhost:8051/docs)
+    - Web (React): [http://localhost:3100](http://localhost:3100)
+    - Backend API (FastAPI): [http://localhost:8052/docs](http://localhost:8052/docs)
 
     Výchozí účty (seed při prvním startu, hesla lze změnit v `.env`):
 
@@ -167,18 +167,18 @@ Běží **dvě věci zároveň** — backend a frontend.
     Aplikace je na [http://localhost:5173](http://localhost:5173).
 
 **Docker je jednodušší** — `docker compose up --build -d` zvedne obojí
-na 3001/8051 bez řešení portů a proxy.
+na 3100/8052 bez řešení portů a proxy.
 
 ### 3. Nasazení na server (produkce)
 
 Aplikace běží na serveru **drakisa** (192.168.119.167) jako **dva samostatné
 compose projekty** z checkoutu `/home/roman/dev/antelon-energy`:
 
-- **Produkce** (`docker-compose.prod.yml`, projekt `antelon-prod`): web :3100,
-  API :8052, veřejně na **https://fve.etikos.cz** přes etikos-nginx
-  (`fve.etikos.cz` → `drakisa:3100`, `/api/` → `drakisa:8052`).
-- **Vývoj** (`docker-compose.yml`, projekt `antelon-energy`): web :3001,
-  API :8051 — veřejně vystavený není.
+- **Produkce** (`docker-compose.prod.yml`, projekt `antelon-prod`): web :3001,
+  API :8051, veřejně na **https://fve.etikos.cz** přes okrajovou krabici .20
+  (`fve.etikos.cz` → `drakisa:3001`, `/api/` → `drakisa:8051`).
+- **Vývoj** (`docker-compose.yml`, projekt `antelon-energy`): web :3100,
+  API :8052 — veřejně vystavený není.
 
 **Flow nasazení (commit → push → rebuild produkce):**
 
@@ -189,7 +189,7 @@ compose projekty** z checkoutu `/home/roman/dev/antelon-energy`:
     docker compose -f docker-compose.prod.yml up -d --build
     ```
 
-3. Ověření: https://fve.etikos.cz a http://localhost:8052/docs.
+3. Ověření: https://fve.etikos.cz a http://localhost:8051/docs.
 
 Produkční backend se záměrně **nemountuje** — běží jen kód zapečený v image
 z posledního buildu. Vývojový backend je bind-mount (stačí restart kontejneru).
