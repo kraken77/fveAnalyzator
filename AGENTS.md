@@ -41,9 +41,14 @@ docker compose -f docker-compose.prod.yml up -d --build  # produkce: web :3100, 
 ## Produkce a nasazení
 
 - Produkce = compose projekt `antelon-prod` (`docker-compose.prod.yml`) na tomto
-  stroji (drakisa, 192.168.119.167), veřejně **https://fve.etikos.cz** přes
-  etikos-nginx (`/home/roman/etikos/nginx/nginx.conf`, mimo repo):
-  `fve.etikos.cz` → `:3100`, `/api/` → `:8052`.
+  stroji (drakisa, 192.168.119.167): web `:3100`, API `:8052`. Veřejně
+  **https://fve.etikos.cz** (DNS → 109.202.78.51): TLS se terminuje na
+  okrajové krabici 192.168.119.20 (nginx; Let's Encrypt wildcard certifikáty
+  pro etikos.cz / drakisa.cz / rabiav.cz, ACME webroot přes Apache na portu 80).
+  Fve vhost proxyuje web na `:3100` a `/api/` na `:8052` — tj. na produkci.
+- Veřejný port 80 se forwarduje na `.20:80` (Apache); před migrací tam byl
+  webif MikroTik routeru. `etikos-nginx` (`/home/roman/etikos/nginx/nginx.conf`,
+  mimo repo) je teď jen LAN — není to veřejný vstup.
 - Vývoj = projekt `antelon-energy` (`docker-compose.yml`): web `:3001`, API `:8051`
   (veřejně nevystavený). Vývojový backend je bind-mount (stačí restart);
   produkční backend mount nemá → nasazení = `docker compose -f docker-compose.prod.yml
