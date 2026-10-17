@@ -25,18 +25,11 @@ def load_consumption_data(target_annual_kwh=None):
     consumption = base_load + seasonal_variation + daily_variation + random_noise
     consumption = np.maximum(consumption, 0) # Ensure no negative consumption
     
-    print(f"DEBUG: Initial consumption sum: {consumption.sum()}")
-    print(f"DEBUG: target_annual_kwh: {target_annual_kwh}")
-
     if target_annual_kwh is not None:
         current_total = consumption.sum()
         if current_total > 0:
             scaling_factor = target_annual_kwh / current_total
-            print(f"DEBUG: Scaling factor: {scaling_factor}")
             consumption = consumption * scaling_factor
-    
-    print(f"DEBUG: Final consumption sum: {consumption.sum()}")
-    print(f"DEBUG: Consumption head: {consumption[:5]}")
     
     return pd.DataFrame({'datetime': dates, 'consumption_kWh': consumption})
 

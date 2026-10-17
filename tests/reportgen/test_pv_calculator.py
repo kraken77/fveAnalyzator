@@ -3,6 +3,8 @@
 `get_pv_production` i `get_optimal_pv_production` umí dostat syntetické
 počasí přes `weather_data`, takže testy nepotřebují síť ani cache.
 """
+from pathlib import Path
+
 import pandas as pd
 
 from pv_calculator import (
@@ -161,3 +163,19 @@ def test_optimum_never_below_actual_for_off_grid_azimuth_real_tmy():
     assert grid < actual
 
     assert optimum >= actual - 1e-9
+
+
+def test_pv_calculator_nema_duplicitni_importy():
+    """Hlavička modulu nesmí obsahovat zduplikované importy (historicky řádky 5–7)."""
+    import ast
+    import inspect
+
+    import pv_calculator
+
+    zdroj = Path(inspect.getfile(pv_calculator)).read_text(encoding="utf-8")
+    strom = ast.parse(zdroj)
+    importy = [
+        ast.dump(v) for v in strom.body
+        if isinstance(v, (ast.Import, ast.ImportFrom))
+    ]
+    assert len(importy) == len(set(importy)), "duplicitní importy v pv_calculator.py"

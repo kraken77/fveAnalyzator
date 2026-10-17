@@ -1,10 +1,6 @@
 import pandas as pd
 import pvlib
 from pvlib.location import Location
-
-import pandas as pd
-import pvlib
-from pvlib.location import Location
 from pvlib.iotools import get_pvgis_tmy
 import warnings
 import sqlite3
