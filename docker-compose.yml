@@ -1,8 +1,8 @@
-# VÝVOJOVÁ instance (tento soubor) — web :3001, API :8051.
+# VÝVOJOVÁ instance (tento soubor) — web :3100, API :8052.
 #   docker compose up -d --build
 #
 # PRODUKČNÍ instance je samostatný compose projekt (docker-compose.prod.yml) —
-# web :3100, API :8052, veřejně na https://fve.etikos.cz přes etikos-nginx.
+# web :3001, API :8051, veřejně na https://fve.etikos.cz (cesta přes .20).
 #   docker compose -f docker-compose.prod.yml up -d --build
 services:
   backend:
@@ -10,7 +10,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8051:8000"
+      - "8052:8000"
     volumes:
       - ./backend:/app
       - ./data:/app/data
@@ -25,7 +25,7 @@ services:
       - RG_CUSTOMER_PASSWORD=${RG_CUSTOMER_PASSWORD:-Zakaznik123!}
       # Sdílené odkazy/QR ve vývoji — produkce si drží vlastní hodnotu
       # (https://fve.etikos.cz) v docker-compose.prod.yml.
-      - RG_PUBLIC_URL=${RG_PUBLIC_URL:-http://localhost:3001}
+      - RG_PUBLIC_URL=${RG_PUBLIC_URL:-http://localhost:3100}
     command: uvicorn main:app --host 0.0.0.0 --port 8000
 
   web:
@@ -33,8 +33,8 @@ services:
       context: ./frontend-web
       dockerfile: Dockerfile
     ports:
-      # Vývojová instance. Port 3100 patří produkci (docker-compose.prod.yml).
-      - "3001:80"
+      # Vývojová instance. Port 3001 patří produkci (docker-compose.prod.yml).
+      - "3100:80"
     depends_on:
       - backend
     environment:

@@ -1,5 +1,5 @@
-# PRODUKČNÍ instance — web :3100, API :8052, veřejně https://fve.etikos.cz
-# (přes etikos-nginx: fve.etikos.cz -> 192.168.119.167:3100 a /api/ -> :8052).
+# PRODUKČNÍ instance — web :3001, API :8051, veřejně https://fve.etikos.cz
+# (veřejná 443 terminuje na .20; upstream míří na 192.168.119.167:3001 a /api/ -> :8051).
 #
 # Nasazení (z tohoto checkoutu):  docker compose -f docker-compose.prod.yml up -d --build
 # Rebuild = zveřejnění aktuálního kódu; kód je zapečený v image z buildu
@@ -14,7 +14,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8052:8000"
+      - "8051:8000"
     volumes:
       - ./data:/app/data
     environment:
@@ -35,7 +35,7 @@ services:
       context: ./frontend-web
       dockerfile: Dockerfile
     ports:
-      - "3100:80"
+      - "3001:80"
     depends_on:
       - backend
     environment:
