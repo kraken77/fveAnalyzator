@@ -32,6 +32,9 @@ services:
     build:
       context: ./frontend-web
       dockerfile: Dockerfile
+      args:
+        # Oranžový pas "Vývojová verze" nahoře (prod image má default prod).
+        VITE_APP_LABEL: dev
     ports:
       # Vývojová instance. Port 3001 patří produkci (docker-compose.prod.yml).
       - "3100:80"

@@ -52,7 +52,10 @@ docker compose -f docker-compose.prod.yml up -d --build  # produkce: web :3001, 
   webif MikroTik routeru. `etikos-nginx` (`/home/roman/etikos/nginx/nginx.conf`,
   mimo repo) je teď jen LAN — není to veřejný vstup.
 - Vývoj = projekt `antelon-energy` (`docker-compose.yml`): web `:3100`, API `:8052`
-  (veřejně nevystavený). Vývojový backend je bind-mount (stačí restart);
+  (veřejně nevystavený). Dev web image se builduje s `VITE_APP_LABEL=dev`
+  (Dockerfile build arg) → oranžový pas „Vývojová verze“ nahoře; prod image
+  má default `prod` a pas se neukazuje. Vývojový backend je bind-mount
+  (stačí restart);
   produkční backend mount nemá → nasazení = `docker compose -f docker-compose.prod.yml
   up -d --build` (kód se zapeče do image z aktuálního stavu checkoutu).
 - **Obě instance sdílí živá data** `./data` → `data/reportgen.db` jsou živá

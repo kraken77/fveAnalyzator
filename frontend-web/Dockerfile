@@ -5,6 +5,10 @@ RUN npm ci
 COPY . .
 ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=$VITE_API_URL
+# Label instance pro UI (oranžový pas "Vývojová verze"). Default prod —
+# dev image ho přepíše na dev (docker-compose.yml, build.args).
+ARG VITE_APP_LABEL=prod
+ENV VITE_APP_LABEL=$VITE_APP_LABEL
 RUN npm run build
 
 FROM nginx:alpine
