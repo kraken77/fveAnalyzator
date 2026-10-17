@@ -31,25 +31,33 @@ npm run lint    # oxlint; ~19 pre-existing warningů je normál, exit 0
 VITE_DEV_PROXY_TARGET=http://127.0.0.1:8051 npm run dev
 ```
 
-Celé prostředí: `docker compose up -d --build` → web `:3100` (`WEB_PORT` z `.env`,
-navíc fixně `:3001`), API `:8051` + `/docs`.
+Dvě instance (obě z tohoto checkoutu, sdílí `./data`):
+
+```bash
+docker compose up -d --build                             # vývoj: web :3001, API :8051
+docker compose -f docker-compose.prod.yml up -d --build  # produkce: web :3100, API :8052
+```
 
 ## Produkce a nasazení
 
-- Produkce běží **na tomto stroji** (drakisa, 192.168.119.167): https://fve.etikos.cz,
-  reverse proxy → web `:3001`, API `:8051`.
-- Živé kontejnery `antelon-energy-*` běží **z tohoto checkoutu** a backend má
-  bind-mount `./data` → **`data/reportgen.db` jsou živá data**. Nic do nich
-  nezapisovat ad-hoc a nepřepisovat; zálohy se dělají do `data/backups/`.
-- Frontend bundle je zapečený v image → změna frontendu se projeví až po
-  `docker compose up -d --build`. Backend je bind-mount → stačí
-  `docker compose restart backend`.
+- Produkce = compose projekt `antelon-prod` (`docker-compose.prod.yml`) na tomto
+  stroji (drakisa, 192.168.119.167), veřejně **https://fve.etikos.cz** přes
+  etikos-nginx (`/home/roman/etikos/nginx/nginx.conf`, mimo repo):
+  `fve.etikos.cz` → `:3100`, `/api/` → `:8052`.
+- Vývoj = projekt `antelon-energy` (`docker-compose.yml`): web `:3001`, API `:8051`
+  (veřejně nevystavený). Vývojový backend je bind-mount (stačí restart);
+  produkční backend mount nemá → nasazení = `docker compose -f docker-compose.prod.yml
+  up -d --build` (kód se zapeče do image z aktuálního stavu checkoutu).
+- **Obě instance sdílí živá data** `./data` → `data/reportgen.db` jsou živá
+  produkční data. Nic do nich nezapisovat ad-hoc a nepřepisovat; zálohy se dělají
+  do `data/backups/`.
+- Frontend bundle je v image (dev i prod) → změna frontendu se projeví až po
+  rebuildu příslušného stacku.
 - **Push/merge/deploy jen na výslovný pokyn uživatele.**
-- `deploy.sh` + `/home/roman/apps/antelon-energy` (README) je stará cesta: `apps`
-  je opuštěný zářijový checkout s vlastními nepushnutými commity a starými daty —
-  aktuální produkce jede odsud, odsud se i (re)buildí.
-- Sdílené odkazy/QR (`/p/{code}`) staví z `RG_PUBLIC_URL` — v produkci musí být
-  `https://fve.etikos.cz` (compose default je `http://localhost`).
+- `deploy.sh` + `/home/roman/apps/antelon-energy` je stará opuštěná cesta
+  (zářijový checkout, vlastní nepushnuté commity, stará data) — nepoužívat.
+- Sdílené odkazy/QR (`/p/{code}`) staví z `RG_PUBLIC_URL`: prod default
+  `https://fve.etikos.cz`, dev `http://localhost:3001`.
 
 ## Konvence
 

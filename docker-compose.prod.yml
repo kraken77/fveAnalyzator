@@ -1,0 +1,42 @@
+# PRODUKČNÍ instance — web :3100, API :8052, veřejně https://fve.etikos.cz
+# (přes etikos-nginx: fve.etikos.cz -> 192.168.119.167:3100 a /api/ -> :8052).
+#
+# Nasazení (z tohoto checkoutu):  docker compose -f docker-compose.prod.yml up -d --build
+# Rebuild = zveřejnění aktuálního kódu; kód je zapečený v image z buildu
+# (backend se záměrně NEmountuje), takže produkce běží jen to, co se vědomě nasadí.
+#
+# Pozor: ./data (živá data) je sdílené s vývojovou instancí v docker-compose.yml.
+name: antelon-prod
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8052:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - RG_JWT_SECRET=${RG_JWT_SECRET:-dev-secret-change-me-in-prod}
+      - RG_ADMIN_EMAIL=${RG_ADMIN_EMAIL:-admin@antelon.local}
+      - RG_ADMIN_PASSWORD=${RG_ADMIN_PASSWORD:-admin123}
+      - RG_ANTELON_EMAIL=${RG_ANTELON_EMAIL:-antelon@antelon.local}
+      - RG_ANTELON_PASSWORD=${RG_ANTELON_PASSWORD:-Antelon123!}
+      - RG_CUSTOMER_EMAIL=${RG_CUSTOMER_EMAIL:-zakaznik@antelon.local}
+      - RG_CUSTOMER_PASSWORD=${RG_CUSTOMER_PASSWORD:-Zakaznik123!}
+      # Sdílené odkazy a QR kódy na zákaznický portál musí mířit na veřejnou adresu.
+      - RG_PUBLIC_URL=${RG_PUBLIC_URL:-https://fve.etikos.cz}
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+
+  web:
+    build:
+      context: ./frontend-web
+      dockerfile: Dockerfile
+    ports:
+      - "3100:80"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=/api/v1

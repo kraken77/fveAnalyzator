@@ -51,10 +51,10 @@ This project provides a comprehensive toolkit for analyzing PV power plant feasi
 
 Nejjednodušší způsob pro spuštění celé aplikace.
 
-1. **Zkontrolujte volné porty** (aktuální compose používá 3000 a 8051 — 8050 je obsazený jiným projektem):
+1. **Zkontrolujte volné porty** (vývojový compose používá 3001/8051; produkční `docker-compose.prod.yml` 3100/8052):
 
     ```bash
-    ss -tln | grep -E "3000|8051"
+    ss -tln | grep -E "3001|3100|8051|8052"
     ```
 
 2. **Sestavte a spusťte kontejnery:**
@@ -64,7 +64,7 @@ Nejjednodušší způsob pro spuštění celé aplikace.
     ```
 
 3. **Otevřete aplikaci:**
-    - Web (React): [http://localhost:3000](http://localhost:3000)
+    - Web (React): [http://localhost:3001](http://localhost:3001)
     - Backend API (FastAPI): [http://localhost:8051/docs](http://localhost:8051/docs)
 
     Výchozí účty (seed při prvním startu, hesla lze změnit v `.env`):
@@ -167,26 +167,43 @@ Běží **dvě věci zároveň** — backend a frontend.
     Aplikace je na [http://localhost:5173](http://localhost:5173).
 
 **Docker je jednodušší** — `docker compose up --build -d` zvedne obojí
-na 3000/8051 bez řešení portů a proxy.
+na 3001/8051 bez řešení portů a proxy.
 
 ### 3. Nasazení na server (produkce)
 
-Aplikace běží na serveru **drakisa** (192.168.119.167) jako Docker Compose projekt `antelon-energy` v adresáři `/home/roman/apps/antelon-energy`. Veřejně dostupná na **https://fve.etikos.cz** (web na portu 3001 — port 3000 obsazuje Grafana), backend API na 8051.
+Aplikace běží na serveru **drakisa** (192.168.119.167) jako **dva samostatné
+compose projekty** z checkoutu `/home/roman/dev/antelon-energy`:
 
-**Flow nasazení:**
+- **Produkce** (`docker-compose.prod.yml`, projekt `antelon-prod`): web :3100,
+  API :8052, veřejně na **https://fve.etikos.cz** přes etikos-nginx
+  (`fve.etikos.cz` → `drakisa:3100`, `/api/` → `drakisa:8052`).
+- **Vývoj** (`docker-compose.yml`, projekt `antelon-energy`): web :3001,
+  API :8051 — veřejně vystavený není.
+
+**Flow nasazení (commit → push → rebuild produkce):**
 
 1. Lokálně: commit + `git push origin main`.
-2. Na serveru: `cd /home/roman/apps/antelon-energy && ./deploy.sh`
-3. `deploy.sh` automaticky:
-   - zálohuje produkční `data/reportgen.db` do `data/backups/`,
-   - stáhne nejnovější kód (`git pull --ff-only`),
-   - znovupostaví a restartuje kontejnery (`docker compose up -d --build`),
-   - ověří health backendu a webu.
+2. Na drakisa v adresáři checkoutu:
+
+    ```bash
+    docker compose -f docker-compose.prod.yml up -d --build
+    ```
+
+3. Ověření: https://fve.etikos.cz a http://localhost:8052/docs.
+
+Produkční backend se záměrně **nemountuje** — běží jen kód zapečený v image
+z posledního buildu. Vývojový backend je bind-mount (stačí restart kontejneru).
+
+> Historie: dřív se nasazovalo z `/home/roman/apps/antelon-energy` přes
+> `deploy.sh`; tato cesta je opuštěná (starý checkout i data).
 
 **Důležité:**
 
-- Produkční data (`reportgen.db`, `data/projects/`, `spot_market.db`) žijí pouze na disku serveru — **nejsou v gitu** a nesmí se přepsat lokální vývojovou verzí.
-- Citlivé hodnoty (hesla, `RG_JWT_SECRET`, `RG_PUBLIC_URL=https://fve.etikos.cz`) jsou v `.env` na serveru; v gitu je jen `.env.example`.
+- Živá data (`reportgen.db`, `data/projects/`, `spot_market.db`) žijí v `data/`
+  tohoto checkoutu — **nejsou v gitu** a **obě instance je sdílejí**; nesmí je
+  přepsat žádná jiná (např. záložní) verze.
+- Citlivé hodnoty (hesla, `RG_JWT_SECRET`, `RG_PUBLIC_URL=https://fve.etikos.cz`)
+  jdou přepsat přes `.env` v rootu checkoutu; v gitu je jen `.env.example`.
 
 ## Integrace Dat (Spotové ceny OTE) — není hotovo
 

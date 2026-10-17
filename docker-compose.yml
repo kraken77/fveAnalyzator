@@ -1,3 +1,9 @@
+# VÝVOJOVÁ instance (tento soubor) — web :3001, API :8051.
+#   docker compose up -d --build
+#
+# PRODUKČNÍ instance je samostatný compose projekt (docker-compose.prod.yml) —
+# web :3100, API :8052, veřejně na https://fve.etikos.cz přes etikos-nginx.
+#   docker compose -f docker-compose.prod.yml up -d --build
 services:
   backend:
     build:
@@ -17,7 +23,9 @@ services:
       - RG_ANTELON_PASSWORD=${RG_ANTELON_PASSWORD:-Antelon123!}
       - RG_CUSTOMER_EMAIL=${RG_CUSTOMER_EMAIL:-zakaznik@antelon.local}
       - RG_CUSTOMER_PASSWORD=${RG_CUSTOMER_PASSWORD:-Zakaznik123!}
-      - RG_PUBLIC_URL=${RG_PUBLIC_URL:-http://localhost:${WEB_PORT:-3000}}
+      # Sdílené odkazy/QR ve vývoji — produkce si drží vlastní hodnotu
+      # (https://fve.etikos.cz) v docker-compose.prod.yml.
+      - RG_PUBLIC_URL=${RG_PUBLIC_URL:-http://localhost:3001}
     command: uvicorn main:app --host 0.0.0.0 --port 8000
 
   web:
@@ -25,11 +33,7 @@ services:
       context: ./frontend-web
       dockerfile: Dockerfile
     ports:
-      # WEB_PORT = adresa pro lokální vývoj (default 3000, viz .env.example).
-      # 3001 je natvrdo proto, že na něj míří reverse proxy v etikos-nginx
-      # (server_name fve.etikos.cz -> proxy_pass http://<drakisa>:3001)
-      # a taky deploy.sh healthcheck (WEB_PORT="${WEB_PORT:-3001}").
-      - "${WEB_PORT:-3000}:80"
+      # Vývojová instance. Port 3100 patří produkci (docker-compose.prod.yml).
       - "3001:80"
     depends_on:
       - backend
