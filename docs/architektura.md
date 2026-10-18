@@ -224,7 +224,11 @@ Scheduler je čistá funkce v `app/reportgen/planning.py` (bez DB/HTTP);
 `build_plan_input` je jediný most do databáze. Plán se vždy kotví na
 **reálném „dnes“** — `from`/`to` v overview je jen rozsah zobrazení
 (určuje `holidays_in_range`). Kalendář svátků ČR (pevné + velikonoční,
-včetně Maškopustu) žije v `app/reportgen/cz_calendar.py`.
+včetně Maškopustu) žije v `app/reportgen/cz_calendar.py` — počítá se
+pro libovolné roky (Velikonoce přes computus, cca 1900–2099), žádná
+data se nestahují. Frontend načte overview do `today+90d`; sahá-li
+makespan dál, tichý re-fetch s větším `to` doplní jen `holidays_in_range`,
+aby stínování svátků i KPI fungovaly po celou délku plánu.
 
 ### Veřejné
 
@@ -389,7 +393,7 @@ Frontend: **vitest + jsdom**, testy `*.test.tsx` vedle zdrojů
 | `src/pages/FveAnalysis.tsx` | `/fve-analysis` (samostatně) |
 | `src/pages/ProjectFveAnalysis.tsx` | `/projects/{id}/fve-analysis` (v rámci zakázky) |
 | `src/api/planning.ts` | HTTP klient + typy pro plánování |
-| `src/pages/Planovani.tsx` | `/planovani` — Gantt (zoom dny/týdny/měsíce + skok do období, virtuální čety), kalendář, panel čteta + what-if počty (interní role) |
+| `src/pages/Planovani.tsx` | `/planovani` — Gantt (zoom dny/týdny/měsíce + skok do období, virtuální čety, svátky do celého rozsahu), kalendář, panel čteta + what-if počty (interní role) |
 
 `FveAnalysisForm`, `FveAnalysisResults` a `ContactStep` jsou sdílené
 oběma routami. `ContactStep` v režimu „v rámci zakázky“ zapisuje jen

@@ -16,10 +16,11 @@ import type {
 
 // ---------- Pomocné funkce ----------
 
+// Pozor: čistá UTC aritmetika. Starší verze (new Date + lokalní setDate)
+// tichou ztrácela den při skoku přes přechod letního/zimního času.
 function addDays(date: string, n: number): string {
-  const d = new Date(date);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
 function daysBetween(a: string, b: string): number {
@@ -916,6 +917,36 @@ export default function Planovani() {
     if (!isAdmin) return;
     listCrews().then(setCrews).catch(() => {});
   }, [isAdmin]);
+
+  // Svátky na celou délku gantu: pokud se plán natáhne za 90 dní, tichým
+  // re-fetchem overview se rozšíří jen holidays_in_range (plán je kotvený
+  // na „dnes“, takže se nic dalšího nemění). holidaysEnd je guard proti
+  // re-fetch loopu — po mergi se effect spustí znovu a skončí na „hotovo“.
+  const [holidaysEnd, setHolidaysEnd] = useState<string | null>(null);
+  useEffect(() => {
+    if (!overviewData) return;
+    const end = ganttEnd(overviewData.today, overviewData.makespan);
+    if (holidaysEnd === end) return;
+    if (end <= addDays(overviewData.today, GANTT_DAYS)) {
+      setHolidaysEnd(end);
+      return;
+    }
+    let cancelled = false;
+    getOverview(overviewData.today, end)
+      .then((fresh) => {
+        if (cancelled) return;
+        setHolidaysEnd(end);
+        setOverviewData((prev) =>
+          prev && prev.today === fresh.today
+            ? { ...prev, holidays_in_range: fresh.holidays_in_range }
+            : prev,
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [overviewData, holidaysEnd]);
 
   const refreshCrews = useCallback(() => {
     listCrews().then(setCrews).catch(() => {});

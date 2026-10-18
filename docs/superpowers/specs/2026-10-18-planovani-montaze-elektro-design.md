@@ -54,11 +54,11 @@ Plánovatel čte existující data pipeline — **žádné nové sloupce u proje
 
 ### 3.3 Pracovní dny ČR
 
-Pracovní den = pondělí–pátek **mimo státní svátky**. Svátky z vestavěné
-tabulky (pevná data + velikonočně závislé: Maškopust = Velikonoce−47,
-Velký pátek = Velikonoce−2, Velikonoční pondělí = Velikonoce+1;
-Velikonoce 2026 = 5. 4., 2027 = 28. 3., 2028 = 16. 4.), roky 2026–2028,
-rozšiřitelné — žádné externí API.
+Pracovní den = pondělí–pátek **mimo státní svátky**. Svátky se **počítají**
+pro libovolné roky (žádná data se nestahují, žádné externí API): pevná data
++ velikonočně závislé (Maškopust = Velikonoce−47, Velký pátek = Velikonoce−2,
+Velikonoční pondělí = Velikonoce+1), Velikonoce přes computus
+(`_easter_sunday`, funkční cca 1900–2099).
 
 ## 4. Datový model
 
@@ -177,7 +177,11 @@ frontend). Chybné `from`/`to` → 422.
   **Skok do období:** date picker + „Jít“ + „Dnes“ (plynulé posunutí na
   sloupec daného dne). Na hrubých zóomech (šířka < 60 px) pruh bez textu,
   detail v tooltipu. **Virtuální čety ze simulace** mají pruhovaný rámeček
-  a „(virtuální)“ v tooltipu.
+  a „(virtuální)“ v tooltipu. **Svátky na celý rozsah:** přehled se načte
+  do `today+90d`; pokud makespan sahá dál, tichý re-fetch overview s `to` =
+  konec gantu doplní jen `holidays_in_range` (guard `holidaysEnd` brání
+  re-fetch loopu) → stínování i KPI „Svátky v období“ fungují po celou
+  délku plánu.
 - **Kalendář (měsíc):** dny s čipy kroků (projekt + krok + četa), filtry
   (četa / typ / film-rezervace).
 - **Panel čteta:** seznam + editace dostupnosti (admin/antelon).
@@ -191,7 +195,8 @@ frontend). Chybné `from`/`to` → 422.
 ## 9. Testy
 
 - `tests/reportgen/test_planning.py` — **srdce**: kalendář (pevné svaky,
-  velikonoční, víkend), scheduler (návaznost, kapacita čtety, skip
+  velikonoční, víkend, svaky pro následující roky = počítané, ne
+  načítané), scheduler (návaznost, kapacita čtety, skip
   víkendů/sváků, okno dostupnosti, výjimky, work_days, priorita film nad
   rezervací, expirace, what-if = dřívější makespan, `None` bez čtety,
   determinismus).
@@ -201,7 +206,8 @@ frontend). Chybné `from`/`to` → 422.
   `virtual: true`), 422 na špatné datum i záporný počet četa.
 - Frontend (etapa 2): vitest komponent (Gantt renderuje z mock API,
   what-if počet volá simulate a ukáže složení čteta, virtuální pruh s
-  pruhovaným rámečkem, zoom na týdny, skok do období).
+  pruhovaným rámečkem, zoom na týdny, skok do období, tichý re-fetch
+  svátků při makespanu delším než 90 dní).
 - `tests/test_plotly_traces.py` se nemění.
 
 ## 10. Explicitně mimo rozsah (V1)

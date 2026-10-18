@@ -3,7 +3,8 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../context/AuthContext";
 import type { User } from "../context/AuthContext";
-import { simulate } from "../api/planning";
+import { getOverview, simulate } from "../api/planning";
+import type { PlanningOverview } from "../api/planning";
 import Planovani from "./Planovani";
 
 vi.mock("../api/planning", () => ({
@@ -271,6 +272,76 @@ describe("Planovani — Gantt zoom a skok", () => {
     });
     fireEvent.click(screen.getByTestId("gantt-jump"));
     expect(scrollSpy).toHaveBeenCalled();
+  });
+});
+
+describe("Planovani — svátky v celém rozsahu gantu", () => {
+  it("při makespanu delším než 90 dní doženou svátky na celý rozsah", async () => {
+    const narrow: PlanningOverview = {
+      today: "2026-10-18",
+      holidays_in_range: ["2026-11-01"],
+      ttl_days: 30,
+      makespan: "2027-03-24",
+      crews: [
+        {
+          id: 1,
+          name: "Montáž",
+          work_type: "roofer",
+          available_from: "2026-10-01",
+          available_to: "2027-12-31",
+          work_days: ["po", "ut", "st", "ct", "pa"],
+          absent_dates: [],
+          active: true,
+        },
+      ],
+      items: [
+        {
+          project_id: 5,
+          project_name: "Dům Novák",
+          step_code: "stavba_montaz",
+          step_name: "Montáž",
+          work_type: "roofer",
+          kind: "firm",
+          duration_days: 10,
+          start: "2027-03-10",
+          end: "2027-03-24",
+          crew_name: "Montáž",
+        },
+      ],
+      projects: [
+        {
+          id: 5,
+          name: "Dům Novák",
+          kind: "firm",
+          lead_age_days: 3,
+          sod_date: "2026-10-10",
+          done_date: "2027-03-24",
+        },
+      ],
+    };
+    const wide: PlanningOverview = {
+      ...narrow,
+      holidays_in_range: [
+        "2026-11-01",
+        "2026-12-25",
+        "2027-01-01",
+        "2027-02-09",
+      ],
+    };
+    vi.mocked(getOverview)
+      .mockResolvedValueOnce(narrow)
+      .mockResolvedValueOnce(wide);
+
+    renderPlanovani({ id: 1, email: "admin@test.local", role: "admin", roles: ["admin"] });
+    await screen.findByText("Dům Novák");
+
+    const kpi = () =>
+      screen.getByText("Svátky v období").closest(".kpi-card") as HTMLElement;
+    expect(kpi().textContent).toContain("1");
+
+    // makespan 2027-03-24 → konec gantu 2027-03-31 → tichý re-fetch s větším „to“
+    await waitFor(() => expect(kpi().textContent).toContain("4"));
+    expect(getOverview).toHaveBeenLastCalledWith("2026-10-18", "2027-03-31");
   });
 });
 

@@ -71,6 +71,20 @@ class TestCzCalendar:
         dates = [date(2026, 12, 24), date(2026, 12, 25), date(2026, 12, 26)]
         assert svatky == dates
 
+    def test_holidays_between_next_years_computed_not_loaded(self):
+        # Svátky pro následující roky se počítají (pevné + velikonoční),
+        # žádná data se nestahují — Gantt tak umí stínovat i daleko do budoucna.
+        svatky = holidays_between(date(2027, 1, 1), date(2027, 5, 31))
+        dates = [
+            date(2027, 1, 1),   # Nový rok
+            date(2027, 2, 9),   # Maškopust (Velikonoce 28. 3. − 47)
+            date(2027, 3, 26),  # Velikonoční pátek
+            date(2027, 3, 29),  # Velikonoční pondělí
+            date(2027, 5, 1),   # Svátek práce
+            date(2027, 5, 8),   # Svátek osvobození
+        ]
+        assert svatky == dates
+
     def test_workday_after_holiday_weekend(self):
         # 30. 12. 2026 = středa, není svátek → ANO
         assert is_cz_workday(date(2026, 12, 30)) is True
