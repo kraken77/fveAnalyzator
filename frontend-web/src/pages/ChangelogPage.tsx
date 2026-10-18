@@ -26,6 +26,23 @@ export default function ChangelogPage() {
   return (
     <div className="max-w-3xl" data-testid="changelog-page">
       <h1 className="text-2xl font-bold mb-4">Changelog</h1>
+      {/* Sticky panel odkazů na karty — přichycený pod headerem (h-16). */}
+      <nav
+        className="sticky top-16 z-30 mb-4 rounded-lg border border-slate-200 bg-white/95 backdrop-blur"
+        data-testid="changelog-toc"
+      >
+        <div className="flex gap-1 overflow-x-auto whitespace-nowrap px-3 py-1.5">
+          {groupByCategory(data.entries).map((cat) => (
+            <a
+              key={cat.key}
+              href={`#${cat.key}`}
+              className="rounded px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-navy"
+            >
+              {cat.label}
+            </a>
+          ))}
+        </div>
+      </nav>
       <div className="rounded-lg border border-slate-200 bg-white p-4 mb-6">
         <p className="text-[10px] uppercase font-bold tracking-wide text-slateMuted mb-1">
           Aktuální build
@@ -38,9 +55,14 @@ export default function ChangelogPage() {
           <span data-testid="changelog-build-date">{data.build.date}</span>
         </p>
       </div>
-      {/* Každá kategorie = samostatná karta (nadpis uvnitř, položky jako řádky). */}
+      {/* Každá kategorie = samostatná karta (nadpis uvnitř, položky jako řádky);
+          id + scroll-mt pro kotvy ze sticky TOC (offset pod header + lištu). */}
       {groupByCategory(data.entries).map((cat) => (
-        <section key={cat.key} className="mb-4 rounded-lg border border-slate-200 bg-white p-4">
+        <section
+          key={cat.key}
+          id={cat.key}
+          className="mb-4 scroll-mt-32 rounded-lg border border-slate-200 bg-white p-4"
+        >
           <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-navy">
             {cat.label}
           </h2>

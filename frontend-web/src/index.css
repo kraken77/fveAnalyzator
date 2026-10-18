@@ -14,6 +14,11 @@ body {
   color: #0b1f33;
 }
 
+/* plynulé scrollování na kotvy (sticky TOC na /changelog) */
+html {
+  scroll-behavior: smooth;
+}
+
 .btn-primary {
   @apply bg-antelonGreen text-white font-semibold px-5 py-2.5 rounded-lg hover:brightness-110 transition shadow-sm;
 }
