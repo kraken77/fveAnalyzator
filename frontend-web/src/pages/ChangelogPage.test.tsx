@@ -35,7 +35,21 @@ describe("ChangelogPage", () => {
     expect(screen.getByText("[web]")).toBeTruthy();
   });
 
-   it("sticky nav: odkaz na kazdou neprazdou kategorii + id na kartach", async () => {
+   it("build karta je vedle nazvu Changelog (fles radek)", async () => {
+    mockFetch(sample);
+    const { container } = render(<ChangelogPage />);
+    await screen.findByText("8218a80");
+
+    const h1 = container.querySelector("h1");
+    const card = container.querySelector('[data-testid="changelog-build"]');
+    expect(h1).toBeTruthy();
+    expect(card).toBeTruthy();
+    // obe v jednom flex radku, karta prave
+    expect(h1!.parentElement).toBe(card!.parentElement);
+    expect(h1!.parentElement!.className).toContain("flex");
+  });
+
+  it("sticky nav: odkaz na kazdou neprazdou kategorii + id na kartach", async () => {
     mockFetch(sample);
     const { container } = render(<ChangelogPage />);
     await screen.findByText("8218a80");
