@@ -65,6 +65,10 @@ docker compose -f docker-compose.prod.yml up -d --build  # produkce: web :3001, 
   rebuildu příslušného stacku. Web build má context = kořen repa (Dockerfile
   potřebuje `.git` pro SHA v pasu) — `.dockerignore` ho drží v kontextu
   záměrně a naopak vynechává `venv/`, `data/`, `node_modules/`.
+- Changelog: `frontend-web/public/changelog.json` je commítnutý stub — při
+  buildu web image ho generuje `frontend-web/scripts/gen-changelog.mjs` z `.git`
+  (label = `VITE_APP_LABEL`). Veřejné stránky `/changelog` a `/o-programu`
+  (fungují i bez loginu) + položky v user menu v `Layout.tsx`.
 - **Push/merge/deploy jen na výslovný pokyn uživatele.**
 - `deploy.sh` + `/home/roman/apps/antelon-energy` je stará opuštěná cesta
   (zářijový checkout, vlastní nepushnuté commity, stará data) — nepoužívat.

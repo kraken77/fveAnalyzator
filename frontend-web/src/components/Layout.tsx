@@ -6,10 +6,11 @@ import client from "../api/client";
 import type { Notification } from "../types";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user, logout, activeRole } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotif, setShowNotif] = useState(false);
+  const [showUser, setShowUser] = useState(false);
 
   const isCustomer = hasAnyRole(user, ["customer"]);
   const showMaterialy = hasAnyRole(user, ["admin", "antelon", "buyer", "warehouse"]);
@@ -141,15 +142,61 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 )}
 
                 <RoleSwitcher />
-                <div className="hidden sm:flex flex-col items-end leading-tight">
-                  <span className="text-xs opacity-80">{user.email}</span>
+                {/* User menu — Changelog, O programu, Odhlásit (původní
+                    samostatné tlačítko Odhlásit je v dropdownu). */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUser((s) => !s)}
+                    className="flex items-center gap-2 rounded-lg bg-white/10 px-2 py-1.5 transition hover:bg-white/20"
+                    data-testid="user-menu-btn"
+                  >
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-antelonGreen text-[10px] font-black text-navy">
+                      {(user.email[0] || "?").toUpperCase()}
+                    </span>
+                    <span className="hidden text-xs opacity-80 md:inline">{user.email}</span>
+                    <span className="text-[10px] opacity-60">▾</span>
+                  </button>
+                  {showUser && (
+                    <div className="absolute right-0 z-50 mt-2 w-64 rounded-lg border border-slate-200 bg-white text-navy shadow-xl">
+                      <div className="border-b border-slate-100 px-4 py-2.5">
+                        <p className="truncate text-sm font-semibold">{user.email}</p>
+                        <p className="text-[10px] uppercase tracking-wide text-slateMuted">
+                          {activeRole}
+                        </p>
+                      </div>
+                      <div className="py-1">
+                        <Link
+                          to="/changelog"
+                          onClick={() => setShowUser(false)}
+                          className="block px-4 py-2 text-sm hover:bg-slate-50"
+                          data-testid="user-menu-changelog"
+                        >
+                          📝 Changelog
+                        </Link>
+                        <Link
+                          to="/o-programu"
+                          onClick={() => setShowUser(false)}
+                          className="block px-4 py-2 text-sm hover:bg-slate-50"
+                          data-testid="user-menu-about"
+                        >
+                          ℹ️ O programu
+                        </Link>
+                      </div>
+                      <div className="border-t border-slate-100 py-1">
+                        <button
+                          onClick={() => {
+                            setShowUser(false);
+                            handleLogout();
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50"
+                          data-testid="user-menu-logout"
+                        >
+                          🚪 Odhlásit
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition"
-                >
-                  Odhlásit
-                </button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
