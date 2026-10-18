@@ -47,10 +47,17 @@ export interface PlanningOverview {
   projects: PlanningProject[];
 }
 
+export interface SimCrew {
+  name: string;
+  work_type: string;
+  virtual: boolean;
+}
+
 export interface SimulateResponse {
   items: PlanningItem[];
   projects: PlanningProject[];
   makespan: string | null;
+  crews: SimCrew[];
 }
 
 export interface SimulateBody {

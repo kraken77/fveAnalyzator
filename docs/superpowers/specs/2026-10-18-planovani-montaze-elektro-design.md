@@ -157,7 +157,7 @@ Registrovaný v `main.py` přes `_load()` jako ostatní routery.
 | Metoda | Cesta | Právo | Výstup |
 |---|---|---|---|
 | GET | `/api/v1/planning/overview?from=YYYY-MM-DD&to=YYYY-MM-DD` | interní role (`get_current_user` + `is_internal_user`) | `{ today, holidays_in_range[], crews[], items[{project_id, project_name, step_code, step_name, work_type, kind, duration_days, start, end, crew_name}], projects[{id, name, kind, lead_age_days, reservation_expires, done_date, sod_date}] }` — `today` = **reálné dnešek** (plán se na něj kotví); `from`/`to` určuje jen `holidays_in_range` (zobrazovaný rozsah) |
-| POST | `/api/v1/planning/simulate` | interní role | body `{ add_crews: { "roofer": 1, "electrician": 1 } }` → `{ items, projects, makespan }` (týž formát items/projects jako overview, bez today/holidays/crews — ty zůstávají z overview); dodatečné čety = kopie dostupnosti první aktivní čtety daného typu (název „Montáž +1“); pokud typ neexistuje, okno `today..today+180` Po–Pá |
+| POST | `/api/v1/planning/simulate` | interní role | body `{ add_crews: { "roofer": 2, "electrician": 1 } }` → `{ items, projects, makespan, crews: [{name, work_type, virtual}] }` (týž formát items/projects jako overview, bez today/holidays; `crews` = základní čety s `virtual: false` + virtuální s `virtual: true`); dodatečné čety = kopie dostupnosti první aktivní čtety daného typu (název „Montáž +1“); pokud typ neexistuje, okno `today..today+180` Po–Pá; počet četa mimo `0–20` → 422 |
 | GET | `/api/v1/planning/crews` | admin/antelon | seznam čteta |
 | POST | `/api/v1/planning/crews` | admin/antelon | vytvořit |
 | PUT | `/api/v1/planning/crews/{id}` | admin/antelon | upravit (název, typ, okno, dny, výjimky, aktivní) |
@@ -168,17 +168,23 @@ frontend). Chybné `from`/`to` → 422.
 ## 8. Frontend — stránka `/planovani` (etapa 2)
 
 - Nová položka v menu pro interní role (vedle Dispečinku).
-- **Gantt:** řádky = projekty (film nahoře, rezervace dole), sloupce = dny
-  (zoom měsíc/kvartál), pruhy = kroky; barva = `work_type` (montáž vs
-  elektro); film = plná barva, rezervace = šrafovaná/50 %;
-  svaky + weekendy ztmavené (z `holidays_in_range`), čára „dnes“;
-  u rezervace věk leadu a datum expirace.
+- **Gantt:** řádky = projekty (film nahoře, rezervace dole), pruhy = kroky;
+  barva = `work_type` (montáž vs elektro); film = plná barva, rezervace =
+  šrafovaná/50 %; svaky + weekendy ztmavené (z `holidays_in_range`), čára
+  „dnes“. Rozsah = `max(today+90d, makespan+7d)`, takže se dooboru vidí i
+  delší plány. **Zoom** Dny (40 px/den, default) / Týdny (ISO týden,
+  „19.–25.10.“) / Měsíce; horní řada = meze měsíců (při zoomu Měsíce roky).
+  **Skok do období:** date picker + „Jít“ + „Dnes“ (plynulé posunutí na
+  sloupec daného dne). Na hrubých zóomech (šířka < 60 px) pruh bez textu,
+  detail v tooltipu. **Virtuální čety ze simulace** mají pruhovaný rámeček
+  a „(virtuální)“ v tooltipu.
 - **Kalendář (měsíc):** dny s čipy kroků (projekt + krok + četa), filtry
   (četa / typ / film-rezervace).
-- **Panel čteta:** seznam + editace dostupnosti (admin/antelon);
-  **what-if přepínače** „+1 montáž“ / „+1 elektro“ → volá `simulate`,
-  ukáže diff: „vše hotovo o N dní dřív/později“ + nová data dokončení
-  projektů.
+- **Panel čteta:** seznam + editace dostupnosti (admin/antelon).
+- **What-if (co-kdyby):** number inputy 0–5 **podle typu čtety** (unie
+  typů z čteta i položek — Montáž / Elektro / Inspekce, neznámý typ = raw
+  name) → volá `simulate`. KPI karta ukáže diff makespanu + **složení čteta**
+  („3 Montáž · 2 Elektro“).
 - Čisté divy/karty — **žádné nové Plotly trace** (`test_plotly_traces.py`
   zůstává green).
 
@@ -190,10 +196,12 @@ frontend). Chybné `from`/`to` → 422.
   rezervací, expirace, what-if = dřívější makespan, `None` bez čtety,
   determinismus).
 - `tests/reportgen/test_planning_router.py` — struktura odpovědí, auth
-  (403 pro customer, 403 pro sales u crews), simulate s dodatečnou čtou,
-  422 na špatné datum.
+  (403 pro customer, 403 pro sales u crews), simulate s dodatečnou čtou
+  (včetně `crews` pole — základní `virtual: false` / virtuální
+  `virtual: true`), 422 na špatné datum i záporný počet četa.
 - Frontend (etapa 2): vitest komponent (Gantt renderuje z mock API,
-  what-if volá simulate).
+  what-if počet volá simulate a ukáže složení čteta, virtuální pruh s
+  pruhovaným rámečkem, zoom na týdny, skok do období).
 - `tests/test_plotly_traces.py` se nemění.
 
 ## 10. Explicitně mimo rozsah (V1)

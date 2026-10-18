@@ -155,9 +155,17 @@ def planning_simulate(
 
     Dodatečné čety = kopie dostupnosti první aktivní čtety daného typu
     (název „Montáž +1"); pokud typ neexistuje, okno today..today+180 Po–Pá.
+    Odpověď obsahuje `crews` — základní čety (virtual=False) a virtuální
+    (virtual=True). Počet četa mimo rozsah 0–20 → 422.
     """
     if not is_internal_user(user):
         raise HTTPException(403, "Přístup pouze pro interní uživatele")
+
+    for work_type, count in data.add_crews.items():
+        if not 0 <= count <= 20:
+            raise HTTPException(
+                422, f"Počet četa pro {work_type!r} musí být 0–20, ne {count}"
+            )
 
     today = date.today()
     items, base_crews, calendar_info, projects_meta = build_plan_input(db, today)
@@ -182,7 +190,12 @@ def planning_simulate(
             ))
 
     plan = schedule(items, all_crews, today)
-    return _plan_to_dict(plan, projects_meta)
+    result = _plan_to_dict(plan, projects_meta)
+    result["crews"] = [
+        {"name": c.name, "work_type": c.work_type, "virtual": i >= len(base_crews)}
+        for i, c in enumerate(all_crews)
+    ]
+    return result
 
 
 # ======================== Crews CRUD ========================

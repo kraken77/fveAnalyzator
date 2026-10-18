@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../context/AuthContext";
 import type { User } from "../context/AuthContext";
+import { simulate } from "../api/planning";
 import Planovani from "./Planovani";
 
 vi.mock("../api/planning", () => ({
@@ -144,6 +145,15 @@ vi.mock("../api/planning", () => ({
           : []),
       ],
       makespan: extra > 0 ? "2026-12-20" : "2026-12-15",
+      crews: [
+        { name: "Montáž", work_type: "roofer", virtual: false },
+        ...(extra > 0
+          ? [
+              { name: "Montáž +1", work_type: "roofer", virtual: true },
+              { name: "Montáž +2", work_type: "roofer", virtual: true },
+            ]
+          : []),
+      ],
     };
   }),
   listCrews: vi.fn(async () => [
@@ -198,18 +208,69 @@ describe("Planovani — Gantt projekty", () => {
 });
 
 describe("Planovani — what-if simulate", () => {
-  it("what-if checkbox volá simulate a překreslí makespan", async () => {
+  it("what-if počet čteta volá simulate a překreslí makespan", async () => {
     renderPlanovani({ id: 1, email: "admin@test.local", role: "admin", roles: ["admin"] });
     await screen.findByText("Dům Novák");
 
-    const checkbox = screen.getByTestId("what-if-roofer");
-    expect(checkbox).toBeTruthy();
-
-    fireEvent.click(checkbox);
+    const input = screen.getByTestId("what-if-roofer");
+    fireEvent.change(input, { target: { value: "2" } });
 
     await waitFor(() => {
       expect(screen.getByText("Simulace Nový Projekt")).toBeTruthy();
     });
+    expect(simulate).toHaveBeenCalledWith({ add_crews: { roofer: 2 } });
+  });
+
+  it("simulace ukáže složení čteta v KPI souhrnu", async () => {
+    renderPlanovani({ id: 1, email: "admin@test.local", role: "admin", roles: ["admin"] });
+    await screen.findByText("Dům Novák");
+
+    fireEvent.change(screen.getByTestId("what-if-roofer"), {
+      target: { value: "2" },
+    });
+    await screen.findByText("Simulace Nový Projekt");
+    // 1 základní + 2 virtuální montáže
+    expect(screen.getByText("3 Montáž")).toBeTruthy();
+  });
+
+  it("virtuální četa je v Gantu označená pruhovaným rámem", async () => {
+    renderPlanovani({ id: 1, email: "admin@test.local", role: "admin", roles: ["admin"] });
+    await screen.findByText("Dům Novák");
+
+    fireEvent.change(screen.getByTestId("what-if-roofer"), {
+      target: { value: "1" },
+    });
+    const bar = await screen.findByText("(Montáž +1)");
+    const ganttBar = bar.closest("div.absolute");
+    expect(ganttBar?.className).toContain("border-dashed");
+  });
+});
+
+describe("Planovani — Gantt zoom a skok", () => {
+  it("zoom týdny ukáže týdenní rozsahy", async () => {
+    renderPlanovani({ id: 1, email: "admin@test.local", role: "admin", roles: ["admin"] });
+    await screen.findByText("Dům Novák");
+
+    fireEvent.click(screen.getByRole("button", { name: "Týdny" }));
+    // 19.–25.10.2026 = první celý týden od dneška (2026-10-18 = So)
+    await screen.findByText("19.–25.10.");
+  });
+
+  it("skok do období posune Gantt", async () => {
+    renderPlanovani({ id: 1, email: "admin@test.local", role: "admin", roles: ["admin"] });
+    await screen.findByText("Dům Novák");
+    // jsdom neimplementuje scrollTo — doplním ho přímo na scroll container
+    const gantt = screen.getByTestId("gantt-chart");
+    const scrollSpy = vi.fn();
+    (
+      gantt as unknown as { scrollTo: (opts: { left: number; behavior: string }) => void }
+    ).scrollTo = scrollSpy;
+
+    fireEvent.change(screen.getByTestId("gantt-jump-date"), {
+      target: { value: "2026-12-01" },
+    });
+    fireEvent.click(screen.getByTestId("gantt-jump"));
+    expect(scrollSpy).toHaveBeenCalled();
   });
 });
 

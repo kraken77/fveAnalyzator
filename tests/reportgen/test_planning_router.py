@@ -211,3 +211,49 @@ class TestPlanningOverview:
         updated = resp.json()
         assert updated["name"] == "Přejmenovaná četa"
         assert updated["active"] is False
+
+
+class TestPlanningSimulateCrews:
+    """Odpověď simulate obsahuje crews (základní + virtuální)."""
+
+    def test_simulate_returns_crews_with_virtual_flag(self, client, admin_token):
+        resp = client.post(
+            "/api/v1/planning/simulate",
+            json={"add_crews": {"roofer": 1, "electrician": 2}},
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 200
+        crews = resp.json()["crews"]
+
+        for c in crews:
+            assert set(c) == {"name", "work_type", "virtual"}
+
+        base = [c for c in crews if not c["virtual"]]
+        virtual = [c for c in crews if c["virtual"]]
+        # Default Montáž + Elektro jsou nevirtuální
+        assert len(base) >= 2
+        assert {c["work_type"] for c in base} >= {"roofer", "electrician"}
+
+        # Virtuální čety: 1 montáž + 2 elektro s přívlastkem „+N“
+        assert {c["work_type"] for c in virtual} == {"roofer", "electrician"}
+        assert [c["name"] for c in virtual if c["work_type"] == "roofer"] == ["Montáž +1"]
+        assert sorted(c["name"] for c in virtual if c["work_type"] == "electrician") == [
+            "Elektro +1", "Elektro +2",
+        ]
+
+    def test_simulate_no_add_crews_returns_only_base(self, client, admin_token):
+        resp = client.post(
+            "/api/v1/planning/simulate", json={}, headers=_auth(admin_token),
+        )
+        assert resp.status_code == 200
+        crews = resp.json()["crews"]
+        assert crews
+        assert all(c["virtual"] is False for c in crews)
+
+    def test_simulate_negative_count_returns_422(self, client, admin_token):
+        resp = client.post(
+            "/api/v1/planning/simulate",
+            json={"add_crews": {"roofer": -1}},
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 422

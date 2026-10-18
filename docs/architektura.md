@@ -215,7 +215,7 @@ Všechno pod `/api/v1` má autentizaci. Bez ní jsou jen veřejné čtení
 | Metoda | Cesta | K čemu |
 |---|---|---|
 | GET | `/planning/overview?from&to` | Plán montáže/elektro (interní role) — položky, čety, svátky |
-| POST | `/planning/simulate` | What-if (+N čteta) → `{ items, projects, makespan }` |
+| POST | `/planning/simulate` | What-if (+N čteta) → `{ items, projects, makespan, crews[{name, work_type, virtual}] }` |
 | GET/POST | `/planning/crews` | CRUD čteta (admin/antelon) |
 | PUT | `/planning/crews/{id}` | Úprava čtety (admin/antelon) |
 
@@ -389,7 +389,7 @@ Frontend: **vitest + jsdom**, testy `*.test.tsx` vedle zdrojů
 | `src/pages/FveAnalysis.tsx` | `/fve-analysis` (samostatně) |
 | `src/pages/ProjectFveAnalysis.tsx` | `/projects/{id}/fve-analysis` (v rámci zakázky) |
 | `src/api/planning.ts` | HTTP klient + typy pro plánování |
-| `src/pages/Planovani.tsx` | `/planovani` — Gantt, kalendář, panel čteta + what-if (interní role) |
+| `src/pages/Planovani.tsx` | `/planovani` — Gantt (zoom dny/týdny/měsíce + skok do období, virtuální čety), kalendář, panel čteta + what-if počty (interní role) |
 
 `FveAnalysisForm`, `FveAnalysisResults` a `ContactStep` jsou sdílené
 oběma routami. `ContactStep` v režimu „v rámci zakázky“ zapisuje jen
