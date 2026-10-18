@@ -53,16 +53,18 @@ docker compose -f docker-compose.prod.yml up -d --build  # produkce: web :3001, 
   mimo repo) je teď jen LAN — není to veřejný vstup.
 - Vývoj = projekt `antelon-energy` (`docker-compose.yml`): web `:3100`, API `:8052`
   (veřejně nevystavený). Dev web image se builduje s `VITE_APP_LABEL=dev`
-  (Dockerfile build arg) → oranžový pas „Vývojová verze“ nahoře; prod image
-  má default `prod` a pas se neukazuje. Vývojový backend je bind-mount
-  (stačí restart);
+  (Dockerfile build arg) → oranžový pas „Vývojová verze“ nahoře s časem buildu
+  a git SHA; prod image má default `prod` a pas se neukazuje. Vývojový backend
+  je bind-mount (stačí restart);
   produkční backend mount nemá → nasazení = `docker compose -f docker-compose.prod.yml
   up -d --build` (kód se zapeče do image z aktuálního stavu checkoutu).
 - **Obě instance sdílí živá data** `./data` → `data/reportgen.db` jsou živá
   produkční data. Nic do nich nezapisovat ad-hoc a nepřepisovat; zálohy se dělají
   do `data/backups/`.
 - Frontend bundle je v image (dev i prod) → změna frontendu se projeví až po
-  rebuildu příslušného stacku.
+  rebuildu příslušného stacku. Web build má context = kořen repa (Dockerfile
+  potřebuje `.git` pro SHA v pasu) — `.dockerignore` ho drží v kontextu
+  záměrně a naopak vynechává `venv/`, `data/`, `node_modules/`.
 - **Push/merge/deploy jen na výslovný pokyn uživatele.**
 - `deploy.sh` + `/home/roman/apps/antelon-energy` je stará opuštěná cesta
   (zářijový checkout, vlastní nepushnuté commity, stará data) — nepoužívat.

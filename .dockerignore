@@ -1,0 +1,8 @@
+# Kontext obou image (backend: context ., web: context . + frontend-web/Dockerfile)
+# je kořen repa. .git zůstává ZÁMĚRNĚ v kontextu — web build potřebuje HEAD
+# pro git SHA v oranžovém pasu (frontend-web/Dockerfile).
+venv/
+data/
+frontend-web/node_modules/
+frontend-web/dist/
+.superpowers/

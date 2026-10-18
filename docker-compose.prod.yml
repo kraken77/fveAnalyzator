@@ -32,8 +32,9 @@ services:
 
   web:
     build:
-      context: ./frontend-web
-      dockerfile: Dockerfile
+      # context = kořen repa — image potřebuje .git pro git SHA v pasu.
+      context: .
+      dockerfile: frontend-web/Dockerfile
     ports:
       - "3001:80"
     depends_on:

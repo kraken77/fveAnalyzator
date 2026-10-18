@@ -30,8 +30,9 @@ services:
 
   web:
     build:
-      context: ./frontend-web
-      dockerfile: Dockerfile
+      # context = kořen repa — image potřebuje .git pro git SHA v pasu.
+      context: .
+      dockerfile: frontend-web/Dockerfile
       args:
         # Oranžový pas "Vývojová verze" nahoře (prod image má default prod).
         VITE_APP_LABEL: dev
