@@ -35,7 +35,23 @@ describe("ChangelogPage", () => {
     expect(screen.getByText("[web]")).toBeTruthy();
   });
 
-   it("build karta je vedle nazvu Changelog (fles radek)", async () => {
+   it("sticky blok obsahuje nazev, build kartu i TOC", async () => {
+    mockFetch(sample);
+    const { container } = render(<ChangelogPage />);
+    await screen.findByText("8218a80");
+
+    const sticky = container.querySelector('[data-testid="changelog-sticky"]');
+    expect(sticky).toBeTruthy();
+    expect(sticky!.className).toContain("sticky");
+    const h1 = container.querySelector("h1");
+    const card = container.querySelector('[data-testid="changelog-build"]');
+    const toc = container.querySelector('[data-testid="changelog-toc"]');
+    expect(sticky!.contains(h1)).toBeTruthy();
+    expect(sticky!.contains(card)).toBeTruthy();
+    expect(sticky!.contains(toc)).toBeTruthy();
+  });
+
+  it("build karta je vedle nazvu Changelog (fles radek)", async () => {
     mockFetch(sample);
     const { container } = render(<ChangelogPage />);
     await screen.findByText("8218a80");
