@@ -15,6 +15,8 @@ import Materialy from "./pages/Materialy";
 import AdminPipeline from "./pages/AdminPipeline";
 import FveAnalysisPage from "./pages/FveAnalysis";
 import ProjectFveAnalysisPage from "./pages/ProjectFveAnalysis";
+import ChangelogPage from "./pages/ChangelogPage";
+import AboutPage from "./pages/AboutPage";
 
 function ProtectedLayout({
   children,
@@ -146,6 +148,24 @@ export default function App() {
               <ProtectedLayout adminOnly>
                 <AdminPipeline />
               </ProtectedLayout>
+            }
+          />
+
+          {/* info — veřejné (i bez loginu), položky v user menu */}
+          <Route
+            path="/changelog"
+            element={
+              <Layout>
+                <ChangelogPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/o-programu"
+            element={
+              <Layout>
+                <AboutPage />
+              </Layout>
             }
           />
 

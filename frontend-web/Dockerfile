@@ -19,9 +19,10 @@ ENV VITE_API_URL=$VITE_API_URL
 ARG VITE_APP_LABEL=prod
 ENV VITE_APP_LABEL=$VITE_APP_LABEL
 
-# Build info do pasu: git SHA + čas buildu. Vite vystavuje VITE_* proměnné
-# z process env do import.meta.env při buildu (viz src/lib/appEnv.ts).
-RUN VITE_BUILD_SHA="$(git -C /app rev-parse --short=7 HEAD 2>/dev/null || echo '?')" \
+# Build info do pasu (VITE_* z process env, viz src/lib/appEnv.ts) a
+# public/changelog.json z historie commitů (viz scripts/gen-changelog.mjs).
+RUN node scripts/gen-changelog.mjs \
+ && VITE_BUILD_SHA="$(git -C /app rev-parse --short=7 HEAD 2>/dev/null || echo '?')" \
     VITE_BUILD_DATE="$(date -u '+%Y-%m-%d %H:%M UTC')" \
     npm run build
 
