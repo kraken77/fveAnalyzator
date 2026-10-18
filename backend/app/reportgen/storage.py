@@ -281,6 +281,22 @@ class Setting(Base):
     key = Column(String(50), primary_key=True)
     value = Column(Text, nullable=True)
 
+
+class WorkCrew(Base):
+    """Pracovní četa (montáž, elektro, …).
+
+    Tabulka `work_crews` — automaticky vytvoří `Base.metadata.create_all`.
+    """
+    __tablename__ = "work_crews"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    work_type = Column(String(30), nullable=False)   # roofer | electrician | ...
+    available_from = Column(Date, nullable=False)
+    available_to = Column(Date, nullable=False)
+    work_days_json = Column(Text, nullable=True)     # ["po","ut","st","ct","pa"], default všech 5
+    absent_dates_json = Column(Text, nullable=True)  # ["2026-11-05", ...]
+    active = Column(Boolean, nullable=False, default=True)
+
 _engine = None
 _SessionLocal = None
 
@@ -482,7 +498,36 @@ def detach_step_materials(db, step_id: int) -> None:
 def _seed_settings(db):
     if db.query(Setting).filter(Setting.key == "margin").first() is None:
         db.add(Setting(key="margin", value="0.30"))
-        db.commit()
+    if db.query(Setting).filter(Setting.key == "planovani_reservation_ttl_days").first() is None:
+        db.add(Setting(key="planovani_reservation_ttl_days", value="30"))
+    db.commit()
+
+
+def ensure_default_crews(db):
+    """Idempotentní seed pracovních četa (Montáž + Elektro).
+
+    Okno 2026-10-01 → 2027-12-31, Po–Pá.
+    Volá se z `init_db()` těsně za `ensure_pipeline_templates`.
+    """
+    for crew_data in [
+        {"name": "Montáž", "work_type": "roofer"},
+        {"name": "Elektro", "work_type": "electrician"},
+    ]:
+        existing = db.query(WorkCrew).filter(
+            WorkCrew.name == crew_data["name"],
+            WorkCrew.work_type == crew_data["work_type"],
+        ).first()
+        if not existing:
+            db.add(WorkCrew(
+                name=crew_data["name"],
+                work_type=crew_data["work_type"],
+                available_from=date(2026, 10, 1),
+                available_to=date(2027, 12, 31),
+                work_days_json=json.dumps(["po", "ut", "st", "ct", "pa"]),
+                absent_dates_json=None,
+                active=True,
+            ))
+    db.commit()
 
 
 def init_db(db_path=None):
@@ -548,6 +593,8 @@ def init_db(db_path=None):
         # šablony pipeline + kroky — idempotentní seed (M1.2)
         from .pipeline_seed import ensure_pipeline_templates
         ensure_pipeline_templates(db)
+        # výchozí pracovní čety — idempotentní seed (plánování)
+        ensure_default_crews(db)
     except Exception as e:
         print(f"seed users error: {e}")
         import traceback; traceback.print_exc()

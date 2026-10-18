@@ -57,10 +57,11 @@ def main_app():
 
 
 def test_all_modules_report_ok_when_they_load(main_app):
-    """V testovacím prostředí se mají načíst všechny tři moduly."""
+    """V testovacím prostředí se mají načíst všechny moduly."""
     assert main_app._module_status == {
         "reportgen": "ok",
         "fve_analysis": "ok",
+        "planning": "ok",
         "reportgen_db": "ok",
     }
 

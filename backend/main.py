@@ -84,6 +84,12 @@ def _load_fve_router() -> None:
     app.include_router(router)
 
 
+def _load_planning_router() -> None:
+    from app.reportgen.planning_router import router
+
+    app.include_router(router)
+
+
 def _load_reportgen_db() -> None:
     from app.reportgen.storage import init_db
 
@@ -92,6 +98,7 @@ def _load_reportgen_db() -> None:
 
 _load("reportgen", _load_reportgen_router)
 _load("fve_analysis", _load_fve_router)
+_load("planning", _load_planning_router)
 _load("reportgen_db", _load_reportgen_db)
 
 
