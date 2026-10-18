@@ -38,16 +38,17 @@ export default function ChangelogPage() {
           <span data-testid="changelog-build-date">{data.build.date}</span>
         </p>
       </div>
+      {/* Každá kategorie = samostatná karta (nadpis uvnitř, položky jako řádky). */}
       {groupByCategory(data.entries).map((cat) => (
-        <section key={cat.key} className="mb-5">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-navy border-b border-slate-200 pb-1 mb-2">
+        <section key={cat.key} className="mb-4 rounded-lg border border-slate-200 bg-white p-4">
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-navy">
             {cat.label}
           </h2>
-          <ul className="space-y-1.5">
+          <ul className="divide-y divide-slate-100">
             {cat.items.map((entry) => (
               <li
                 key={`${entry.sha}-${entry.subject}`}
-                className="flex items-baseline gap-3 rounded border border-slate-100 bg-white px-3 py-2 text-sm"
+                className="flex items-baseline gap-3 py-2 text-sm first:pt-0 last:pb-0"
               >
                 <span className="shrink-0 text-xs text-slate-400">{entry.date}</span>
                 <span className="flex-1">

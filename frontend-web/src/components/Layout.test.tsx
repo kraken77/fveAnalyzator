@@ -41,13 +41,24 @@ function renderLayout() {
 }
 
 describe("Layout — user menu", () => {
-  it("dropdown obsahuje Changelog, O programu a Odhlásit", () => {
+  it("dropdown obsahuje O programu, Changelog a Odhlásit", () => {
     renderLayout();
     fireEvent.click(screen.getByTestId("user-menu-btn"));
 
     expect(screen.getByTestId("user-menu-changelog").getAttribute("href")).toBe("/changelog");
     expect(screen.getByTestId("user-menu-about").getAttribute("href")).toBe("/o-programu");
     expect(screen.getByTestId("user-menu-logout")).toBeTruthy();
+  });
+
+  it("polozka O programu je v menu pred Changelogem", () => {
+    renderLayout();
+    fireEvent.click(screen.getByTestId("user-menu-btn"));
+
+    const about = screen.getByTestId("user-menu-about");
+    const changelog = screen.getByTestId("user-menu-changelog");
+    expect(
+      about.compareDocumentPosition(changelog) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("kliknutí na Odhlásit zavolá logout", () => {

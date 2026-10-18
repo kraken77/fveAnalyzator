@@ -166,20 +166,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       </div>
                       <div className="py-1">
                         <Link
-                          to="/changelog"
-                          onClick={() => setShowUser(false)}
-                          className="block px-4 py-2 text-sm hover:bg-slate-50"
-                          data-testid="user-menu-changelog"
-                        >
-                          📝 Changelog
-                        </Link>
-                        <Link
                           to="/o-programu"
                           onClick={() => setShowUser(false)}
                           className="block px-4 py-2 text-sm hover:bg-slate-50"
                           data-testid="user-menu-about"
                         >
                           ℹ️ O programu
+                        </Link>
+                        <Link
+                          to="/changelog"
+                          onClick={() => setShowUser(false)}
+                          className="block px-4 py-2 text-sm hover:bg-slate-50"
+                          data-testid="user-menu-changelog"
+                        >
+                          📝 Changelog
                         </Link>
                       </div>
                       <div className="border-t border-slate-100 py-1">
