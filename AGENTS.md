@@ -11,7 +11,7 @@ implementační plány jednotlivých etap.
 Backend — z kořene repa, venv je v `./venv` (Python 3.11):
 
 ```bash
-./venv/bin/python -m pytest tests/ -q                    # celá suita: 278 testů, ~8 min
+./venv/bin/python -m pytest tests/ -q                    # celá suita: 324 testů, ~8 min
 ./venv/bin/python -m pytest tests/reportgen/test_workflow.py -q   # jeden soubor
 
 # Dev server — POZOR: `main.py` importuje `app.*`, takže z kořene s uvicorn

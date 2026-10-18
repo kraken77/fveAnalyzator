@@ -70,6 +70,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 Dispečink
               </Link>
             )}
+            {!isCustomer && (
+              <Link
+                to="/planovani"
+                className="text-sm font-medium hover:text-antelonGreen transition"
+              >
+                Plánování
+              </Link>
+            )}
             <Link to="/projects" className="text-sm font-medium hover:text-antelonGreen transition">
               {isCustomer ? "Moje projekty" : "Projekty"}
             </Link>

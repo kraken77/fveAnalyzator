@@ -10,6 +10,7 @@ import ProjectDetail from "./pages/ProjectDetail";
 import PublicPreview from "./pages/PublicPreview";
 import Admin from "./pages/Admin";
 import Dispecink from "./pages/Dispecink";
+import Planovani from "./pages/Planovani";
 import PipelineDetail from "./pages/PipelineDetail";
 import Materialy from "./pages/Materialy";
 import AdminPipeline from "./pages/AdminPipeline";
@@ -66,6 +67,16 @@ export default function App() {
             element={
               <ProtectedLayout roles={["admin", "antelon", "sales", "designer", "buyer", "warehouse", "subsidy", "connection", "electrician", "roofer", "inspector"]}>
                 <Dispecink />
+              </ProtectedLayout>
+            }
+          />
+
+          {/* plánování montáže a elektro (interní uživatelé) */}
+          <Route
+            path="/planovani"
+            element={
+              <ProtectedLayout roles={["admin", "antelon", "sales", "designer", "buyer", "warehouse", "subsidy", "connection", "electrician", "roofer", "inspector"]}>
+                <Planovani />
               </ProtectedLayout>
             }
           />

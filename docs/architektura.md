@@ -210,6 +210,22 @@ Všechno pod `/api/v1` má autentizaci. Bez ní jsou jen veřejné čtení
 `/api/v1/projects*`, `/api/v1/pipeline/*`, `/api/v1/admin/*` — viz
 [príručku procesní pipeline](superpowers/prirucka-procesni-pipeline.md).
 
+### Plánování
+
+| Metoda | Cesta | K čemu |
+|---|---|---|
+| GET | `/planning/overview?from&to` | Plán montáže/elektro (interní role) — položky, čety, svátky |
+| POST | `/planning/simulate` | What-if (+N čteta) → `{ items, projects, makespan }` |
+| GET/POST | `/planning/crews` | CRUD čteta (admin/antelon) |
+| PUT | `/planning/crews/{id}` | Úprava čtety (admin/antelon) |
+
+Navrh: `superpowers/specs/2026-10-18-planovani-montaze-elektro-design.md`.
+Scheduler je čistá funkce v `app/reportgen/planning.py` (bez DB/HTTP);
+`build_plan_input` je jediný most do databáze. Plán se vždy kotví na
+**reálném „dnes“** — `from`/`to` v overview je jen rozsah zobrazení
+(určuje `holidays_in_range`). Kalendář svátků ČR (pevné + velikonoční,
+včetně Maškopustu) žije v `app/reportgen/cz_calendar.py`.
+
 ### Veřejné
 
 | Metoda | Cesta | K čemu |
@@ -230,7 +246,7 @@ Všechno pod `/api/v1` má autentizaci. Bez ní jsou jen veřejné čtení
 
 | Soubor | Co v něm | Pozor |
 |---|---|---|
-| `data/reportgen.db` | Projekty, pipeline, kroky, PDF verze, uživatelé | Jediný zdroj pravdy. Zálohuje se do `data/backups/` |
+| `data/reportgen.db` | Projekty, pipeline, kroky, PDF verze, uživatelé, pracovní čety (`work_crews`) | Jediný zdroj pravdy. Zálohuje se do `data/backups/` |
 | `data/weather_cache.db` | Cache počasí pro výpočet výroby | V dev prostředí obsahuje čtyři lokality: Prahu (50.0880 / 14.4208), Ústí nad Labem (50.6607 / 14.03227), 50.7170082 / 13.9644984 a Brno (49.2 / 16.6). Jakákoli jiná lokalita čte dál ze sítě (PVGIS) — a v testech to znamená timeout |
 | `data/spot_market.db` | Spotové ceny OTE | Prázdná — skripty chybí |
 | `data/projects/<id>/` | Nahrané soubory projektu (CSV Shelly, fotky) | |
@@ -293,7 +309,7 @@ Dnes pád jednoho modulu ostatní nechá běžet, chyba jde do
 
 ```json
 {"message": "fveAnalyzator API",
- "modules": {"reportgen": "ok", "fve_analysis": "ok", "reportgen_db": "ok"}}
+ "modules": {"reportgen": "ok", "fve_analysis": "ok", "planning": "ok", "reportgen_db": "ok"}}
 ```
 
 Při poruše vrací `/` **503**, aby se rozbitá aplikace nehlásila jako
@@ -316,7 +332,7 @@ Neexistuje. Heslo jde změnit přes `PUT /api/v1/admin/users/{id}`.
 ## Testy
 
 ```bash
-pytest tests/            # 154 testů, ~4 minuty
+pytest tests/            # 324 testů, ~8 minut
 ```
 
 **Pytest + FastAPI `TestClient`, žádný E2E framework.** Playwright je v
@@ -350,9 +366,13 @@ Brno 49.2 / 16.6). Jakákoli jiná lokalita jde na síť a timeoutuje.
 | `test_plotly_traces.py` | Že frontend registruje každý typ grafu, který backend generuje |
 | `test_ai.py` | AI kroky pipeline (fve_size, battery, subsidy, loan, nabídka) |
 | `test_hardening.py` | Autorizace, izolace projektů, branice v pipeline |
+| `test_planning.py` | Kalendář ČR + scheduler plánování (návaznost, kapacita, priorita film, expirace, what-if, determinismus) |
+| `test_planning_router.py` | API plánování: struktura, auth, simulate, 422 |
 | `test_economy.py`, `test_workflow.py`, `test_import.py`, `test_models.py`, `test_m5_admin_api.py` | Ekonomika, workflow, import dispečinku, modely, admin API |
 
-Fronta nemá test framework — gate je `npm run build` (`tsc -b && vite build`).
+Frontend: **vitest + jsdom**, testy `*.test.tsx` vedle zdrojů
+(`cd frontend-web && npm test`); hlavní brána je i tak `npm run build`
+(`tsc -b && vite build`).
 
 ---
 
@@ -368,6 +388,8 @@ Fronta nemá test framework — gate je `npm run build` (`tsc -b && vite build`)
 | `src/lib/plotly.ts` | Partial bundle Plotly — registruje **jen použité typy grafů** (viz níže) |
 | `src/pages/FveAnalysis.tsx` | `/fve-analysis` (samostatně) |
 | `src/pages/ProjectFveAnalysis.tsx` | `/projects/{id}/fve-analysis` (v rámci zakázky) |
+| `src/api/planning.ts` | HTTP klient + typy pro plánování |
+| `src/pages/Planovani.tsx` | `/planovani` — Gantt, kalendář, panel čteta + what-if (interní role) |
 
 `FveAnalysisForm`, `FveAnalysisResults` a `ContactStep` jsou sdílené
 oběma routami. `ContactStep` v režimu „v rámci zakázky“ zapisuje jen
